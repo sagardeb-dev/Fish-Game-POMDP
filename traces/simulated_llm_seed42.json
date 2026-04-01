@@ -1,0 +1,3793 @@
+{
+  "metadata": {
+    "seed": 42,
+    "agent": "SimulatedLLMAgent",
+    "timestamp": "2026-04-01T12:08:54.863892",
+    "episode_length": 20
+  },
+  "steps": [
+    {
+      "day": 1,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 1,
+        "days_remaining": 19,
+        "sea_color": "green",
+        "yesterday_reward": 0.0,
+        "yesterday_zone": null,
+        "yesterday_boats": null,
+        "cumulative_reward": 0.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 1 (19 days remaining) ===\nSea color: green\nYesterday's reward: 0.0\nCumulative reward: 0.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 2,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 4,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 6,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 2,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 2,
+        "days_remaining": 18,
+        "sea_color": "murky",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 7.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 2 (18 days remaining) ===\nSea color: murky\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 7.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 9,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 11,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 1
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 13,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 3,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 3,
+        "days_remaining": 17,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 14.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 3 (17 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 14.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 16,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 18,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 2
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 20,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 4,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 1
+      },
+      "observation_bundle": {
+        "day": 4,
+        "days_remaining": 16,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 21.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 4 (16 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 21.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 23,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 25,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 3
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 27,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 5,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 1
+      },
+      "observation_bundle": {
+        "day": 5,
+        "days_remaining": 15,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 28.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 5 (15 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 28.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 30,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 32,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 4
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 34,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 6,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 3
+      },
+      "observation_bundle": {
+        "day": 6,
+        "days_remaining": 14,
+        "sea_color": "dark",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 35.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 6 (14 days remaining) ===\nSea color: dark\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 35.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 37,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "f602e4ec",
+              "day": 6,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 6 update."
+            },
+            {
+              "signal_id": "973dfd76",
+              "day": 1,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 1 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 39,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 5
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 41,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 7,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 2
+      },
+      "observation_bundle": {
+        "day": 7,
+        "days_remaining": 13,
+        "sea_color": "dark",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 42.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 7 (13 days remaining) ===\nSea color: dark\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 42.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 44,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            },
+            {
+              "signal_id": "c8a98d48",
+              "day": 7,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 7 update."
+            },
+            {
+              "signal_id": "f602e4ec",
+              "day": 6,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 6 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 46,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 7.0,
+              "days": 6
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 48,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": -18,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": -18,
+        "done": false
+      }
+    },
+    {
+      "day": 8,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 3
+      },
+      "observation_bundle": {
+        "day": 8,
+        "days_remaining": 12,
+        "sea_color": "murky",
+        "yesterday_reward": -18,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 24.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 8 (12 days remaining) ===\nSea color: murky\nYesterday: fished zone A with 1 boats, reward: -18\nCumulative reward: 24.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 51,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            },
+            {
+              "signal_id": "c8a98d48",
+              "day": 7,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 7 update."
+            },
+            {
+              "signal_id": "f602e4ec",
+              "day": 6,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 6 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 53,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 3.4285714285714284,
+              "days": 7
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 55,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 9,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 3
+      },
+      "observation_bundle": {
+        "day": 9,
+        "days_remaining": 11,
+        "sea_color": "dark",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 31.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 9 (11 days remaining) ===\nSea color: dark\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 31.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 58,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            },
+            {
+              "signal_id": "c8a98d48",
+              "day": 7,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 7 update."
+            },
+            {
+              "signal_id": "f602e4ec",
+              "day": 6,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 6 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 60,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 3.875,
+              "days": 8
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 62,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 10,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "S",
+        "affected_zone": "B",
+        "state_idx": 3
+      },
+      "observation_bundle": {
+        "day": 10,
+        "days_remaining": 10,
+        "sea_color": "murky",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 38.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 10 (10 days remaining) ===\nSea color: murky\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 38.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 65,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            },
+            {
+              "signal_id": "c8a98d48",
+              "day": 7,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 67,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 4.222222222222222,
+              "days": 9
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 69,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 11,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 2
+      },
+      "observation_bundle": {
+        "day": 11,
+        "days_remaining": 9,
+        "sea_color": "murky",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 45.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 11 (9 days remaining) ===\nSea color: murky\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 45.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 72,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 74,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 4.5,
+              "days": 10
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 76,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": -18,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": -18,
+        "done": false
+      }
+    },
+    {
+      "day": 12,
+      "hidden_state": {
+        "storm": 1,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 2
+      },
+      "observation_bundle": {
+        "day": 12,
+        "days_remaining": 8,
+        "sea_color": "dark",
+        "yesterday_reward": -18,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 27.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 12 (8 days remaining) ===\nSea color: dark\nYesterday: fished zone A with 1 boats, reward: -18\nCumulative reward: 27.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 79,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 81,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 2.4545454545454546,
+              "days": 11
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 83,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": -18,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=dark, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": -18,
+        "done": false
+      }
+    },
+    {
+      "day": 13,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 13,
+        "days_remaining": 7,
+        "sea_color": "green",
+        "yesterday_reward": -18,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 9.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 13 (7 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: -18\nCumulative reward: 9.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 86,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 88,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 0.75,
+              "days": 12
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 90,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 14,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 14,
+        "days_remaining": 6,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 16.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 14 (6 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 16.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 93,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 95,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 1.2307692307692308,
+              "days": 13
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 97,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 15,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 15,
+        "days_remaining": 5,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 23.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 15 (5 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 23.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 100,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 102,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 1.6428571428571428,
+              "days": 14
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 104,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 16,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 16,
+        "days_remaining": 4,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 30.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 16 (4 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 30.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 107,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 109,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 2.0,
+              "days": 15
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 111,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 17,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 17,
+        "days_remaining": 3,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 37.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 17 (3 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 37.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 114,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 116,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 2.3125,
+              "days": 16
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 118,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 18,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 18,
+        "days_remaining": 2,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 44.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 18 (2 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 44.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 121,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 123,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 2.588235294117647,
+              "days": 17
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 125,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 19,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 19,
+        "days_remaining": 1,
+        "sea_color": "green",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 51.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 19 (1 days remaining) ===\nSea color: green\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 51.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 128,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 130,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 2.8333333333333335,
+              "days": 18
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 132,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": false
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=green, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": false
+      }
+    },
+    {
+      "day": 20,
+      "hidden_state": {
+        "storm": 0,
+        "wind": "N",
+        "affected_zone": "A",
+        "state_idx": 0
+      },
+      "observation_bundle": {
+        "day": 20,
+        "days_remaining": 0,
+        "sea_color": "murky",
+        "yesterday_reward": 7,
+        "yesterday_zone": "A",
+        "yesterday_boats": 1,
+        "cumulative_reward": 58.0,
+        "tools_available": [
+          "check_weather_reports",
+          "query_fishing_log",
+          "read_barometer",
+          "read_buoy",
+          "analyze_data",
+          "evaluate_options",
+          "forecast_scenario"
+        ],
+        "tool_budget": {
+          "check_weather_reports": 2,
+          "query_fishing_log": 2,
+          "read_barometer": 1,
+          "read_buoy": 2,
+          "analyze_data": 1,
+          "evaluate_options": 1,
+          "forecast_scenario": 1
+        },
+        "db_schema": "Available tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone"
+      },
+      "observation_message": "=== DAY 20 (0 days remaining) ===\nSea color: murky\nYesterday: fished zone A with 1 boats, reward: 7\nCumulative reward: 58.0\nTools available: check_weather_reports, query_fishing_log, read_barometer, read_buoy, analyze_data, evaluate_options, forecast_scenario\nTool budget: {\"check_weather_reports\": 2, \"query_fishing_log\": 2, \"read_barometer\": 1, \"read_buoy\": 2, \"analyze_data\": 1, \"evaluate_options\": 1, \"forecast_scenario\": 1}\n\nDatabase schema:\nAvailable tables:\n\ndaily_log (day, sea_color, zone_fished, boats_sent, reward, cumulative)\n  - Your complete fishing log\n\nweather_signals (signal_id, day, source_type, headline, body)\n  - Weather and maritime intelligence reports\n\ncatch_history (day, zone, boats, reward)\n  - Historical catch outcomes by zone\n\nDecide: use tools to investigate, then call submit_decisions.",
+      "tool_calls": [
+        {
+          "llm_input": {
+            "iteration": 0,
+            "messages_count": 135,
+            "last_message_role": "user",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: check_weather_reports",
+          "tool_name": "check_weather_reports",
+          "tool_args": {
+            "query": "storm warning severe weather gale"
+          },
+          "tool_result": [
+            {
+              "signal_id": "7baf2342",
+              "day": 11,
+              "source_type": "market_data",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: market_data. Day 11 update."
+            },
+            {
+              "signal_id": "d48fe579",
+              "day": 10,
+              "source_type": "coast_guard",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: coast_guard. Day 10 update."
+            },
+            {
+              "signal_id": "f999784a",
+              "day": 7,
+              "source_type": "industry_news",
+              "headline": "STORM WARNING: gale force winds reported offshore",
+              "body": "Detailed report: storm warning: gale force winds reported offshore. Source: industry_news. Day 7 update."
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 1,
+            "messages_count": 137,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: query_fishing_log",
+          "tool_name": "query_fishing_log",
+          "tool_args": {
+            "query": "SELECT zone, AVG(reward) as avg_reward, COUNT(*) as days FROM catch_history GROUP BY zone"
+          },
+          "tool_result": [
+            {
+              "zone": "A",
+              "avg_reward": 3.0526315789473686,
+              "days": 19
+            }
+          ],
+          "is_submit": false
+        },
+        {
+          "llm_input": {
+            "iteration": 2,
+            "messages_count": 139,
+            "last_message_role": "tool",
+            "tools_available": [
+              "check_weather_reports",
+              "query_fishing_log",
+              "read_barometer",
+              "read_buoy",
+              "analyze_data",
+              "evaluate_options",
+              "forecast_scenario",
+              "submit_decisions"
+            ]
+          },
+          "llm_output": "tool_call: submit_decisions",
+          "tool_name": "submit_decisions",
+          "tool_args": {
+            "zone": "A",
+            "boats": 1,
+            "storm_active": 0.75,
+            "zone_a_is_dangerous": 0.375,
+            "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+          },
+          "tool_result": {
+            "reward": 7,
+            "done": true
+          },
+          "is_submit": true
+        }
+      ],
+      "decision": {
+        "zone": "A",
+        "boats": 1,
+        "beliefs": {
+          "storm_active": 0.75,
+          "zone_a_is_dangerous": 0.375
+        },
+        "reasoning": "Sea=murky, alert=True, P(storm)=0.75, sending 1 boats."
+      },
+      "env_result": {
+        "reward": 7,
+        "done": true
+      }
+    }
+  ],
+  "evaluation": {
+    "total_reward": 65,
+    "mean_brier_storm": 0.3875,
+    "mean_brier_zone": 0.178125,
+    "mean_detection_lag": 0.0,
+    "total_tool_use_gap": 198,
+    "total_inference_gap": 157,
+    "total_planning_gap": 0,
+    "tool_usage_counts": {
+      "check_weather_reports": 20,
+      "query_fishing_log": 20,
+      "analyze_data": 0,
+      "evaluate_options": 0,
+      "forecast_scenario": 0,
+      "read_barometer": 0,
+      "read_buoy": 0
+    },
+    "reward_per_quarter": [
+      35,
+      10,
+      -15,
+      35
+    ],
+    "per_step": [
+      {
+        "day": 1,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999475323,
+          0.4999999999475323,
+          6.194001106122352e-12,
+          9.874151699220937e-11
+        ],
+        "retrieved_posterior": [
+          0.4666666666666666,
+          0.4666666666666666,
+          0.03333333333333333,
+          0.03333333333333333
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 2,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.49999999999347366,
+          0.49999999999347366,
+          6.526131884666265e-12,
+          6.526475843526049e-12
+        ],
+        "retrieved_posterior": [
+          0.3743811881188119,
+          0.3743811881188119,
+          0.1256188118811881,
+          0.1256188118811881
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 3,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.499999999989455,
+          0.499999999989455,
+          2.0800260472919464e-11,
+          2.8967807061230817e-13
+        ],
+        "retrieved_posterior": [
+          0.48421964705368997,
+          0.48421964705368997,
+          0.015780352946310017,
+          0.015780352946310017
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 4,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.49999999999957645,
+          0.49999999999957645,
+          4.2503192455315107e-13,
+          4.22032867917908e-13
+        ],
+        "retrieved_posterior": [
+          0.4927645784852034,
+          0.4927645784852034,
+          0.00723542151479664,
+          0.00723542151479664
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 5,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999999819,
+          0.4999999999999819,
+          1.441476109637463e-14,
+          2.1798791608965242e-14
+        ],
+        "retrieved_posterior": [
+          0.4933178331829315,
+          0.4933178331829315,
+          0.00668216681706846,
+          0.00668216681706846
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 6,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": -18,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 39,
+        "inference_gap": -25,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          2.6680565913591317e-29,
+          2.6680565913591317e-29,
+          5.995915100696955e-30,
+          1.0
+        ],
+        "retrieved_posterior": [
+          0.15321368313253358,
+          0.15321368313253358,
+          0.34678631686746636,
+          0.34678631686746636
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 7,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": -18,
+        "belief_optimal_reward": -18,
+        "actual_reward": -18,
+        "tool_use_gap": 39,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.390625,
+        "bayesian_posterior": [
+          1.020635062217011e-20,
+          1.020635062217011e-20,
+          0.9999999999999969,
+          3.038580550151422e-15
+        ],
+        "retrieved_posterior": [
+          0.026230481168000395,
+          0.026230481168000395,
+          0.47376951883199964,
+          0.47376951883199964
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 8,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 7,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 14,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          2.7728395899432255e-17,
+          2.7728395899432255e-17,
+          1.6407155325280837e-17,
+          1.0
+        ],
+        "retrieved_posterior": [
+          0.08959995662588126,
+          0.08959995662588126,
+          0.4104000433741188,
+          0.4104000433741188
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 9,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 7,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 14,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          7.332301591898382e-21,
+          7.332301591898382e-21,
+          5.037727694856932e-19,
+          1.0
+        ],
+        "retrieved_posterior": [
+          0.018575555985563107,
+          0.018575555985563107,
+          0.4814244440144369,
+          0.4814244440144369
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 10,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 7,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 14,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          4.535882186952773e-22,
+          4.535882186952773e-22,
+          2.4307458904264886e-25,
+          1.0
+        ],
+        "retrieved_posterior": [
+          0.08553051161381309,
+          0.08553051161381309,
+          0.41446948838618686,
+          0.41446948838618686
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 11,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": -18,
+        "belief_optimal_reward": -18,
+        "actual_reward": -18,
+        "tool_use_gap": 39,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.390625,
+        "bayesian_posterior": [
+          2.8350750630217333e-41,
+          2.8350750630217333e-41,
+          1.0,
+          2.6107043485021616e-40
+        ],
+        "retrieved_posterior": [
+          0.12198501651694992,
+          0.12198501651694992,
+          0.37801498348305007,
+          0.37801498348305007
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 12,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": -18,
+        "belief_optimal_reward": -18,
+        "actual_reward": -18,
+        "tool_use_gap": 39,
+        "inference_gap": 0,
+        "planning_gap": 0,
+        "brier_storm": 0.0625,
+        "brier_zone": 0.390625,
+        "bayesian_posterior": [
+          4.891358169720103e-36,
+          4.891358169720103e-36,
+          1.0,
+          7.619435249227373e-34
+        ],
+        "retrieved_posterior": [
+          0.0222565598183537,
+          0.0222565598183537,
+          0.4777434401816463,
+          0.4777434401816463
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 13,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999993511,
+          0.4999999999993511,
+          2.4510222401718797e-13,
+          1.0526526975989278e-12
+        ],
+        "retrieved_posterior": [
+          0.40303821358159564,
+          0.40303821358159564,
+          0.09696178641840433,
+          0.09696178641840433
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 14,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999519396,
+          0.4999999999519396,
+          8.535611137027934e-11,
+          1.0764704815676611e-11
+        ],
+        "retrieved_posterior": [
+          0.4867428127259365,
+          0.4867428127259365,
+          0.013257187274063604,
+          0.013257187274063604
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 15,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999989327,
+          0.4999999999989327,
+          2.057640219890744e-12,
+          7.699234792750414e-14
+        ],
+        "retrieved_posterior": [
+          0.49292935056101944,
+          0.49292935056101944,
+          0.007070649438980588,
+          0.007070649438980588
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 16,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999995472283,
+          0.4999999995472283,
+          4.114846738733855e-12,
+          9.014284962253754e-10
+        ],
+        "retrieved_posterior": [
+          0.493328369980954,
+          0.493328369980954,
+          0.006671630019045938,
+          0.006671630019045938
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 17,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.49999999999640315,
+          0.49999999999640315,
+          1.6893039563207335e-14,
+          7.176657910824357e-12
+        ],
+        "retrieved_posterior": [
+          0.4933538659951032,
+          0.4933538659951032,
+          0.0066461340048968075,
+          0.0066461340048968075
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 18,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999609581,
+          0.4999999999609581,
+          1.0424325422418558e-12,
+          7.704140869430153e-11
+        ],
+        "retrieved_posterior": [
+          0.4933554941265668,
+          0.4933554941265668,
+          0.006644505873433156,
+          0.006644505873433156
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 19,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999999861391,
+          0.4999999999861391,
+          2.7653349978400186e-11,
+          6.847516761836395e-14
+        ],
+        "retrieved_posterior": [
+          0.49335559809224006,
+          0.49335559809224006,
+          0.006644401907759996,
+          0.006644401907759996
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "B",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      },
+      {
+        "day": 20,
+        "oracle_reward": 21,
+        "retrieved_oracle_reward": 21,
+        "belief_optimal_reward": 7,
+        "actual_reward": 7,
+        "tool_use_gap": 0,
+        "inference_gap": 14,
+        "planning_gap": 0,
+        "brier_storm": 0.5625,
+        "brier_zone": 0.140625,
+        "bayesian_posterior": [
+          0.4999999971223378,
+          0.4999999971223378,
+          4.6388394229110085e-10,
+          5.2914405373679485e-09
+        ],
+        "retrieved_posterior": [
+          0.3955796000362237,
+          0.3955796000362237,
+          0.10442039996377625,
+          0.10442039996377625
+        ],
+        "optimal_action_under_posterior": {
+          "zone": "A",
+          "boats": 3
+        },
+        "tools_used": [
+          "check_weather_reports",
+          "query_fishing_log"
+        ]
+      }
+    ]
+  }
+}

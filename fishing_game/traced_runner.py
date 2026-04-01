@@ -182,8 +182,15 @@ def run_traced_episode(agent_cls=None, seed=42, config=None, save_path=None):
     env = FishingGameEnv(config=cfg)
     obs = env.reset(seed=seed)
 
-    for _ in range(cfg["episode_length"]):
+    import time
+    for day_idx in range(cfg["episode_length"]):
+        t0 = time.time()
         result = agent.act(env, obs)
+        elapsed = time.time() - t0
+        ctx_len = sum(len(json.dumps(m)) for m in agent._inner.conversation_history)
+        print(f"  Day {day_idx+1}/{cfg['episode_length']}: "
+              f"reward={result['reward']}, {elapsed:.1f}s, ctx~{ctx_len//1000}k chars",
+              flush=True)
         if result["done"]:
             break
         obs = result["observation"]

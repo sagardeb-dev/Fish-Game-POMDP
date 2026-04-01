@@ -29,7 +29,7 @@ class GPTAgent(LLMAgent):
     def __init__(self, model="gpt-5.4", config=None):
         super().__init__(config)
         self.model = model
-        self.client = OpenAI()  # picks up OPENAI_API_KEY from env
+        self.client = OpenAI(timeout=120.0)  # 120s per request
 
     def _call_llm(self, messages, tools):
         """Call OpenAI chat completions with tool definitions."""

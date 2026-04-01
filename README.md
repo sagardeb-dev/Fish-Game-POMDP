@@ -257,12 +257,18 @@ RL-environment/
 
 The three gaps sum exactly to `oracle_reward - actual_reward` at every step (algebraic invariant, verified in tests).
 
-## Baseline Results (easy mode, 5 seeds)
+## Results (hard mode, seed 42)
 
-```
-Agent            Reward     Brier(S)  Brier(E)  ToolGap  InfGap   PlanGap
-Random           ~70        0.25      0.25      high     ~0       high
-NaivePattern     ~200       0.10      0.15      high     negative moderate
-CausalReasoner   ~430       0.02      0.03      ~0       low      low
-Oracle           ~450       0.00      0.00      0        0        0
-```
+| Agent | Reward | Brier(S) | Brier(E) | Tool Gap | Inf Gap | Plan Gap |
+|---|---:|---:|---:|---:|---:|---:|
+| Random | 109.0 | 0.2500 | 0.1300 | 93.0 | 32.0 | 231.0 |
+| NaivePattern | 233.0 | 0.2198 | 0.1684 | 93.0 | 9.0 | 130.0 |
+| **GPT-5.4** | **354.0** | **0.0586** | **0.1598** | **93.0** | **18.0** | **0.0** |
+| CausalReasoner | 465.0 | 0.0075 | 0.0620 | 0.0 | 0.0 | 0.0 |
+| Oracle | 465.0 | 0.0000 | 0.0000 | 0.0 | 0.0 | 0.0 |
+
+**Key observations:**
+- GPT-5.4 scores 354/465 (76% of oracle) — the gap is entirely `tool_use_gap` (93.0) and `inference_gap` (18.0)
+- `planning_gap = 0` means GPT-5.4 acts optimally on its own beliefs, but those beliefs are poorly calibrated
+- `tool_use_gap = 93.0` (same as Random/NaivePattern) — GPT-5.4 used SQL only 4 times across 20 days, failing to discover the causal structure in the historical database
+- CausalReasoner matches Oracle perfectly on this seed — Bayesian inference + SQL discovery closes the full gap

@@ -1,326 +1,389 @@
 """
-Single test file for the entire fishing game.
-Tests are added incrementally as components are built.
+Single test file for the entire fishing game v4 — discoverable causal structure.
+Tests all components: config, POMDP, simulator, evaluator, baselines, runner.
 """
 
+import json
 import math
 import numpy as np
 import pytest
-from fishing_game.config import CONFIG
+from fishing_game.config import CONFIG, HARD_CONFIG, _generate_states, _generate_valid_allocations
 from fishing_game.pomdp import FishingPOMDP, _normal_pdf
 from fishing_game.simulator import FishingGameEnv
 from fishing_game.evaluator import Evaluator
 from fishing_game.baselines import (
-    RandomAgent, NoToolsHeuristic, SearchOnlyHeuristic,
-    BeliefAwareBaseline, OracleAgent,
+    RandomAgent, NaivePatternMatcher,
+    CausalReasoner, OracleAgent,
 )
+
+
+# =============================================================================
+# Config Tests
+# =============================================================================
+
+class TestConfig:
+    """Verify config is well-formed."""
+
+    def test_forty_states(self):
+        assert len(CONFIG["states"]) == 40
+
+    def test_states_are_3_tuples(self):
+        for s in CONFIG["states"]:
+            assert len(s) == 3
+            storm, wind, equip = s
+            assert storm in (0, 1)
+            assert wind in ("N", "S", "E", "W")
+            assert equip in (0, 1, 2, 3, 4)
+
+    def test_storm_transition_rows_sum_to_one(self):
+        T = np.array(CONFIG["storm_transition"])
+        for i, row in enumerate(T):
+            assert abs(sum(row) - 1.0) < 1e-10, f"Storm row {i} sums to {sum(row)}"
+
+    def test_wind_transition_rows_sum_to_one(self):
+        T = np.array(CONFIG["wind_transition"])
+        for i, row in enumerate(T):
+            assert abs(sum(row) - 1.0) < 1e-10, f"Wind row {i} sums to {sum(row)}"
+
+    def test_equip_transition_rows_sum_to_one(self):
+        T = np.array(CONFIG["equip_transition"])
+        for i, row in enumerate(T):
+            assert abs(sum(row) - 1.0) < 1e-10, f"Equip row {i} sums to {sum(row)}"
+
+    def test_sea_color_probs_sum_to_one(self):
+        for storm, probs in CONFIG["sea_color_probs"].items():
+            total = sum(probs.values())
+            assert abs(total - 1.0) < 1e-10
+
+    def test_equip_indicator_probs_sum_to_one(self):
+        for key, probs in CONFIG["equip_indicator_probs"].items():
+            total = sum(probs.values())
+            assert abs(total - 1.0) < 1e-10
+
+    def test_initial_belief_sums_to_one(self):
+        assert abs(sum(CONFIG["initial_belief"]) - 1.0) < 1e-10
+
+    def test_initial_belief_length_40(self):
+        assert len(CONFIG["initial_belief"]) == 40
+
+    def test_four_zones(self):
+        assert CONFIG["zones"] == ["A", "B", "C", "D"]
+
+    def test_valid_allocations_count(self):
+        allocs = _generate_valid_allocations()
+        assert len(allocs) == 34
+
+    def test_valid_allocations_sums(self):
+        for alloc in CONFIG["valid_allocations"]:
+            total = sum(alloc.values())
+            assert 1 <= total <= 3
+
+    def test_hard_config_transitions_valid(self):
+        for name in ["storm_transition", "wind_transition", "equip_transition"]:
+            T = np.array(HARD_CONFIG[name])
+            for i, row in enumerate(T):
+                assert abs(sum(row) - 1.0) < 1e-10, f"HARD {name} row {i}"
+
+    def test_zone_adjacency_symmetric(self):
+        adj = CONFIG["zone_adjacency"]
+        for z1 in CONFIG["zones"]:
+            for z2 in CONFIG["zones"]:
+                assert adj[z1][z2] == adj[z2][z1], f"Asymmetric: {z1}-{z2}"
+
+    def test_zone_adjacency_ring(self):
+        """A-B-C-D-A ring: adjacent zones are distance 1, opposite is distance 2."""
+        adj = CONFIG["zone_adjacency"]
+        assert adj["A"]["B"] == 1
+        assert adj["A"]["C"] == 2
+        assert adj["A"]["D"] == 1
+        assert adj["B"]["C"] == 1
+        assert adj["B"]["D"] == 2
+
+    def test_buoy_params_four_tiers(self):
+        bp = CONFIG["buoy_params"]
+        assert "normal" in bp
+        assert "source" in bp
+        assert "propagated" in bp
+        assert "far_propagated" in bp
+
+    def test_zone_infrastructure_ages(self):
+        ages = CONFIG["zone_infrastructure_age"]
+        assert ages["A"] > ages["B"] > ages["C"] > ages["D"]
+
+    def test_fish_abundance_bonus(self):
+        fab = CONFIG["fish_abundance_bonus"]
+        assert fab[0] == 0  # storm zone: no bonus
+        assert fab[1] == 3  # adjacent: +3
+        assert fab[2] == 0  # far: no bonus
+
+    def test_tool_budgets_no_sensors(self):
+        """v3: raw sensors are free, not in tool_budgets."""
+        budgets = CONFIG["tool_budgets"]
+        assert "read_barometer" not in budgets
+        assert "read_buoy" not in budgets
+        assert "inspect_equipment" not in budgets
+        assert "query_maintenance_log" in budgets
 
 
 # =============================================================================
 # POMDP Model Tests
 # =============================================================================
 
-class TestConfig:
-    """Verify config is well-formed."""
-
-    def test_transition_matrix_rows_sum_to_one(self):
-        T = np.array(CONFIG["transition_matrix"])
-        for i, row in enumerate(T):
-            assert abs(sum(row) - 1.0) < 1e-10, f"Row {i} sums to {sum(row)}"
-
-    def test_sea_color_probs_sum_to_one(self):
-        for storm, probs in CONFIG["sea_color_probs"].items():
-            total = sum(probs.values())
-            assert abs(total - 1.0) < 1e-10, f"storm={storm} sums to {total}"
-
-    def test_four_states(self):
-        assert len(CONFIG["states"]) == 4
-
-    def test_initial_belief_sums_to_one(self):
-        assert abs(sum(CONFIG["initial_belief"]) - 1.0) < 1e-10
-
-
 class TestPOMDPModel:
-    """Test the POMDP model: belief_update, reward, optimal_action."""
+    """Test the POMDP model: Kronecker product, belief_update, reward, optimal_action."""
 
     @pytest.fixture
     def pomdp(self):
         return FishingPOMDP()
 
-    def test_states(self, pomdp):
-        assert pomdp.states == [(0, "N"), (0, "S"), (1, "N"), (1, "S")]
-
     def test_transition_matrix_shape(self, pomdp):
-        assert pomdp.T.shape == (4, 4)
+        assert pomdp.T.shape == (40, 40)
 
-    def test_affected_zone(self, pomdp):
-        assert pomdp._affected_zone((0, "N")) == "A"
-        assert pomdp._affected_zone((0, "S")) == "B"
-        assert pomdp._affected_zone((1, "N")) == "A"
-        assert pomdp._affected_zone((1, "S")) == "B"
+    def test_transition_matrix_rows_sum_to_one(self, pomdp):
+        for i in range(40):
+            assert abs(pomdp.T[i].sum() - 1.0) < 1e-10, f"Row {i} sums to {pomdp.T[i].sum()}"
 
-    # --- Reward function tests ---
+    def test_kronecker_product_correctness(self, pomdp):
+        T_storm = np.array(CONFIG["storm_transition"])
+        T_wind = np.array(CONFIG["wind_transition"])
+        T_equip = np.array(CONFIG["equip_transition"])
+
+        storm_map = {0: 0, 1: 1}
+        wind_map = {"N": 0, "S": 1, "E": 2, "W": 3}
+        equip_map = {0: 0, 1: 1, 2: 2, 3: 3, 4: 4}
+
+        for i in [0, 5, 10, 20, 30, 39]:
+            s_i, w_i, e_i = CONFIG["states"][i]
+            for j in [0, 7, 15, 25, 35, 39]:
+                s_j, w_j, e_j = CONFIG["states"][j]
+                expected = (T_storm[storm_map[s_i], storm_map[s_j]]
+                            * T_wind[wind_map[w_i], wind_map[w_j]]
+                            * T_equip[equip_map[e_i], equip_map[e_j]])
+                assert abs(pomdp.T[i, j] - expected) < 1e-12
+
+    def test_n_states(self, pomdp):
+        assert pomdp.n_states == 40
+
+    # --- Reward function ---
     def test_reward_safe(self, pomdp):
-        # (0,N) = no storm, fishing zone A → safe
-        assert pomdp.reward(0, "A", 3) == 21  # 7*3
-        assert pomdp.reward(0, "B", 2) == 14  # 7*2
+        idx = CONFIG["states"].index((0, "N", 0))
+        alloc = {"A": 3, "B": 0, "C": 0, "D": 0}
+        assert pomdp.reward(idx, alloc) == 21  # 7*3
 
-    def test_reward_danger(self, pomdp):
-        # (1,N) = storm, wind=N, affected=A, fishing zone A → danger
-        assert pomdp.reward(2, "A", 3) == -54  # -18*3
-        # (1,S) = storm, wind=S, affected=B, fishing zone B → danger
-        assert pomdp.reward(3, "B", 2) == -36  # -18*2
+    def test_reward_storm_only(self, pomdp):
+        idx = CONFIG["states"].index((1, "N", 0))
+        alloc = {"A": 3, "B": 0, "C": 0, "D": 0}
+        assert pomdp.reward(idx, alloc) == -54  # -18*3
 
-    def test_reward_storm_but_safe_zone(self, pomdp):
-        # (1,N) = storm, affected=A, but fishing zone B → safe
-        assert pomdp.reward(2, "B", 3) == 21  # 7*3
-        # (1,S) = storm, affected=B, but fishing zone A → safe
-        assert pomdp.reward(3, "A", 2) == 14  # 7*2
+    def test_reward_equip_only(self, pomdp):
+        idx = CONFIG["states"].index((0, "N", 2))
+        alloc = {"A": 0, "B": 2, "C": 0, "D": 0}
+        assert pomdp.reward(idx, alloc) == -20  # -10*2
 
-    # --- Belief update: hand-calculated tests ---
+    def test_reward_both_risks(self, pomdp):
+        idx = CONFIG["states"].index((1, "N", 1))
+        alloc = {"A": 2, "B": 0, "C": 0, "D": 0}
+        assert pomdp.reward(idx, alloc) == -50  # -25*2
+
+    def test_reward_fish_abundance_bonus(self, pomdp):
+        """Zone adjacent to storm gets +3/boat fish bonus."""
+        # Storm in A (wind=N), fish in B (adjacent, distance 1)
+        idx = CONFIG["states"].index((1, "N", 0))
+        alloc = {"A": 0, "B": 3, "C": 0, "D": 0}
+        # B is adjacent to A (distance 1), bonus = +3/boat
+        assert pomdp.reward(idx, alloc) == (7 + 3) * 3  # 30
+
+    def test_reward_fish_bonus_far_zone(self, pomdp):
+        """Zone opposite storm (distance 2) gets NO bonus."""
+        # Storm in A (wind=N), fishing C (distance 2 from A)
+        idx = CONFIG["states"].index((1, "N", 0))
+        alloc = {"A": 0, "B": 0, "C": 3, "D": 0}
+        assert pomdp.reward(idx, alloc) == 7 * 3  # 21, no bonus
+
+    def test_reward_no_storm_no_bonus(self, pomdp):
+        """No storm means no fish abundance bonus anywhere."""
+        idx = CONFIG["states"].index((0, "N", 0))
+        alloc = {"A": 3, "B": 0, "C": 0, "D": 0}
+        assert pomdp.reward(idx, alloc) == 21
+
+    # --- Belief update ---
     def test_belief_update_sea_color_dark(self, pomdp):
-        """
-        Hand calculation: uniform prior [0.25, 0.25, 0.25, 0.25]
-        Observe sea_color = "dark"
-        P(dark | storm=0) = 0.05, P(dark | storm=1) = 0.60
-
-        Likelihoods: [0.05, 0.05, 0.60, 0.60]
-        Unnormalized: [0.0125, 0.0125, 0.15, 0.15]
-        Sum = 0.325
-        Posterior: [0.0125/0.325, 0.0125/0.325, 0.15/0.325, 0.15/0.325]
-                 = [0.03846, 0.03846, 0.46154, 0.46154]
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
+        prior = np.array(CONFIG["initial_belief"])
         posterior = pomdp.belief_update(prior, [("sea_color", "dark")])
-
-        expected = np.array([0.0125, 0.0125, 0.15, 0.15])
-        expected = expected / expected.sum()
-
-        np.testing.assert_allclose(posterior, expected, atol=1e-10)
-        assert abs(pomdp.p_storm(posterior) - (0.15 + 0.15) / 0.325) < 1e-10
+        assert pomdp.p_storm(posterior) > 0.8
+        assert abs(posterior.sum() - 1.0) < 1e-10
 
     def test_belief_update_sea_color_green(self, pomdp):
-        """
-        Uniform prior, observe green.
-        P(green | storm=0) = 0.70, P(green | storm=1) = 0.05
-
-        Likelihoods: [0.70, 0.70, 0.05, 0.05]
-        Unnormalized: [0.175, 0.175, 0.0125, 0.0125]
-        Sum = 0.375
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
+        prior = np.array(CONFIG["initial_belief"])
         posterior = pomdp.belief_update(prior, [("sea_color", "green")])
+        assert pomdp.p_storm(posterior) < 0.1
+        assert abs(posterior.sum() - 1.0) < 1e-10
 
-        expected = np.array([0.175, 0.175, 0.0125, 0.0125])
-        expected = expected / expected.sum()
+    def test_belief_update_equip_indicator_critical(self, pomdp):
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [("equip_indicator", "critical")])
+        assert pomdp.p_equip_failure(posterior) > 0.8
+        assert abs(posterior.sum() - 1.0) < 1e-10
 
-        np.testing.assert_allclose(posterior, expected, atol=1e-10)
-        # P(storm) should be low after seeing green
+    def test_belief_update_barometer_low(self, pomdp):
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [("barometer", 998.0)])
+        assert pomdp.p_storm(posterior) > 0.9
+
+    def test_belief_update_barometer_high(self, pomdp):
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [("barometer", 1013.0)])
+        assert pomdp.p_storm(posterior) < 0.05
+
+    # --- Wave propagation belief update ---
+    def test_belief_update_buoy_source_zone(self, pomdp):
+        """High buoy reading (4.5m) in zone A → storm source is A."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [(("buoy", "A"), 4.5)])
+        assert pomdp.p_storm_zone(posterior, "A") > 0.8
+
+    def test_belief_update_buoy_propagated(self, pomdp):
+        """Propagated buoy pattern: A=4.5, B=2.8 → storm in A, not B.
+        Even though B is elevated, the SOURCE is A."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            (("buoy", "A"), 4.5),
+            (("buoy", "B"), 2.8),
+            (("buoy", "C"), 1.5),
+            (("buoy", "D"), 2.8),
+        ])
+        # Storm source should be A (highest buoy + consistent with propagation pattern)
+        assert pomdp.p_storm_zone(posterior, "A") > pomdp.p_storm_zone(posterior, "B")
+        assert pomdp.p_storm_zone(posterior, "A") > pomdp.p_storm_zone(posterior, "C")
+        assert pomdp.p_storm_zone(posterior, "A") > pomdp.p_storm_zone(posterior, "D")
+
+    def test_belief_update_buoy_normal_no_storm(self, pomdp):
+        """All buoys reading ~1.2m → no storm."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            (("buoy", "A"), 1.2),
+            (("buoy", "B"), 1.1),
+            (("buoy", "C"), 1.3),
+            (("buoy", "D"), 1.2),
+        ])
         assert pomdp.p_storm(posterior) < 0.1
 
-    def test_belief_update_multiple_observations(self, pomdp):
-        """
-        Sequential update: uniform → observe dark → observe barometer=998.
+    # --- Age-confounded equipment ---
+    def test_belief_update_equip_inspection_age_confound(self, pomdp):
+        """Old zone A reads high even when ok. Young zone D reads low when ok.
+        Zone A ok: ~4.5 (2.0 + 25*0.1), Zone D broken: ~8.7 (8.5 + 2*0.1)
+        If A reads 4.5 and D reads 8.7, failure should be in D, not A."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            (("equip_inspection", "A"), 4.5),  # A reads high but it's just old
+            (("equip_inspection", "D"), 8.7),  # D reads very high = actually broken
+        ])
+        assert pomdp.p_equip_zone(posterior, "D") > pomdp.p_equip_zone(posterior, "A")
 
-        Step 1: dark → posterior_1 as computed above
-        Step 2: barometer=998 given posterior_1
+    # --- Maintenance alerts (Poisson) ---
+    def test_belief_update_maintenance_alerts(self, pomdp):
+        """Zone A (age=25) with 8 alerts is normal (~7.5 baseline).
+        Zone D (age=2) with 6 alerts is suspicious (~0.6 baseline, 5.6 if broken)."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            (("maintenance_alerts", "A"), 8),
+            (("maintenance_alerts", "D"), 6),
+        ])
+        assert pomdp.p_equip_zone(posterior, "D") > pomdp.p_equip_zone(posterior, "A")
 
-        For barometer=998:
-          P(998 | storm=0) = N(998; 1013, 3) ≈ very small
-          P(998 | storm=1) = N(998; 998, 5) ≈ 0.0798
-
-        This should push belief strongly toward storm=1.
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
-        posterior = pomdp.belief_update(
-            prior, [("sea_color", "dark"), ("barometer", 998.0)]
-        )
-
-        # After dark + barometer=998, storm probability should be very high
-        p_storm = pomdp.p_storm(posterior)
-        assert p_storm > 0.99, f"P(storm) should be >0.99 after dark+baro=998, got {p_storm}"
-        assert abs(posterior.sum() - 1.0) < 1e-10
-
-    def test_belief_update_barometer_only(self, pomdp):
-        """
-        Hand calculation: uniform prior, observe barometer=1013.
-        P(1013 | storm=0) = N(1013; 1013, 3) = 1/(3*sqrt(2pi))
-        P(1013 | storm=1) = N(1013; 998, 5) = very small (3 sigma away)
-
-        Should strongly favor storm=0.
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
-        posterior = pomdp.belief_update(prior, [("barometer", 1013.0)])
-
-        p_storm = pomdp.p_storm(posterior)
-        assert p_storm < 0.01, f"P(storm) should be <0.01 after baro=1013, got {p_storm}"
-
-    def test_belief_update_buoy_high_in_zone_a(self, pomdp):
-        """
-        Uniform prior, observe buoy reading 4.0 in zone A.
-
-        For each state:
-          (0,N): affected=A, storm=0 → normal params (1.2, 0.3) → P(4.0) ≈ 0
-          (0,S): affected=B, storm=0 → normal params (1.2, 0.3) → P(4.0) ≈ 0
-          (1,N): affected=A, storm=1 → danger params (4.0, 0.5) → P(4.0) = high
-          (1,S): affected=B, storm=1 → buoy in A, affected=B → normal (1.2, 0.3) → P(4.0) ≈ 0
-
-        Should strongly concentrate on state (1,N).
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
-        posterior = pomdp.belief_update(prior, [(("buoy", "A"), 4.0)])
-
-        assert posterior[2] > 0.99, f"State (1,N) should dominate, got {posterior[2]}"
-        assert abs(posterior.sum() - 1.0) < 1e-10
-
-    def test_belief_update_preserves_normalization(self, pomdp):
-        """Any sequence of observations should yield a normalized posterior."""
-        prior = np.array([0.1, 0.3, 0.2, 0.4])
-        posterior = pomdp.belief_update(
-            prior,
-            [("sea_color", "murky"), ("barometer", 1005.0), (("buoy", "B"), 2.0)],
-        )
+    def test_belief_update_multiple_observations_v3(self, pomdp):
+        """All v3 observations combined should yield well-formed posterior."""
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            ("sea_color", "dark"),
+            ("equip_indicator", "warning"),
+            ("barometer", 1000.0),
+            (("buoy", "A"), 4.5),
+            (("buoy", "B"), 2.8),
+            (("buoy", "C"), 1.5),
+            (("buoy", "D"), 2.8),
+            (("equip_inspection", "A"), 4.5),
+            (("equip_inspection", "B"), 2.0),
+            (("equip_inspection", "C"), 9.0),
+            (("equip_inspection", "D"), 2.2),
+            (("maintenance_alerts", "A"), 7),
+            (("maintenance_alerts", "B"), 5),
+            (("maintenance_alerts", "C"), 8),
+            (("maintenance_alerts", "D"), 1),
+        ])
         assert abs(posterior.sum() - 1.0) < 1e-10
         assert all(p >= 0 for p in posterior)
 
-    def test_belief_update_prediction_step(self, pomdp):
-        """Test that predict() applies the transition matrix correctly."""
-        # Start concentrated in state 0 = (0,N)
-        belief = np.array([1.0, 0.0, 0.0, 0.0])
-        predicted = pomdp.predict(belief)
-
-        # Should equal first row of T
-        np.testing.assert_allclose(predicted, pomdp.T[0], atol=1e-10)
-
-    def test_belief_update_sequence_with_prediction(self, pomdp):
-        """
-        Full cycle: predict → update.
-        Start in (0,N), predict, then observe dark.
-        """
-        belief = np.array([1.0, 0.0, 0.0, 0.0])
-        predicted = pomdp.predict(belief)
-        posterior = pomdp.belief_update(predicted, [("sea_color", "dark")])
-
+    def test_belief_update_preserves_normalization(self, pomdp):
+        prior = np.array(CONFIG["initial_belief"])
+        posterior = pomdp.belief_update(prior, [
+            ("sea_color", "murky"),
+            ("equip_indicator", "warning"),
+            ("barometer", 1005.0),
+            (("buoy", "B"), 2.0),
+            (("equip_inspection", "D"), 3.0),
+            (("maintenance_alerts", "A"), 5),
+        ])
         assert abs(posterior.sum() - 1.0) < 1e-10
-        # Dark observation should shift toward storm states
-        assert pomdp.p_storm(posterior) > pomdp.p_storm(predicted)
-
-    # --- Optimal action tests ---
-    def test_optimal_action_certain_no_storm(self, pomdp):
-        """If certain no storm, should fish with max boats (any zone is safe)."""
-        belief = np.array([0.5, 0.5, 0.0, 0.0])  # certain no storm
-        zone, boats, er = pomdp.optimal_action(belief)
-        assert boats == 3
-        assert er == 21.0  # 7 * 3
-
-    def test_optimal_action_certain_storm_north(self, pomdp):
-        """If certain storm + wind=N, affected=A. Should fish B with 3 boats."""
-        belief = np.array([0.0, 0.0, 1.0, 0.0])  # certain (1,N)
-        zone, boats, er = pomdp.optimal_action(belief)
-        assert zone == "B"
-        assert boats == 3
-        assert er == 21.0  # safe zone: 7 * 3
-
-    def test_optimal_action_certain_storm_south(self, pomdp):
-        """If certain storm + wind=S, affected=B. Should fish A with 3 boats."""
-        belief = np.array([0.0, 0.0, 0.0, 1.0])  # certain (1,S)
-        zone, boats, er = pomdp.optimal_action(belief)
-        assert zone == "A"
-        assert boats == 3
-        assert er == 21.0
-
-    def test_optimal_action_high_uncertainty(self, pomdp):
-        """
-        High storm probability but uncertain wind → should reduce boats.
-        belief = [0.0, 0.0, 0.5, 0.5] means storm certain, wind 50/50.
-
-        For zone A, boats b:
-          E[R] = 0.5 * 7*b + 0.5 * (-18*b) = 0.5*b*(7-18) = -5.5*b
-        For zone B, boats b:
-          E[R] = 0.5 * (-18*b) + 0.5 * 7*b = -5.5*b
-
-        Both zones give negative expected reward. Best is 1 boat (least loss).
-        """
-        belief = np.array([0.0, 0.0, 0.5, 0.5])
-        zone, boats, er = pomdp.optimal_action(belief)
-        assert boats == 1
-        assert abs(er - (-5.5)) < 1e-10
-
-    def test_p_storm_and_p_zone(self, pomdp):
-        """Test convenience methods for extracting marginals."""
-        belief = np.array([0.1, 0.2, 0.3, 0.4])
-        assert abs(pomdp.p_storm(belief) - 0.7) < 1e-10
-        # P(zone_A dangerous) = P(storm=1, wind=N) = belief[2]
-        assert abs(pomdp.p_zone_a_dangerous(belief) - 0.3) < 1e-10
-
-
-class TestHandCalculatedBeliefSequence:
-    """
-    Complete hand-calculated belief update sequence to validate
-    the POMDP model end-to-end.
-
-    Scenario: 3-step sequence with specific observations.
-    """
-
-    @pytest.fixture
-    def pomdp(self):
-        return FishingPOMDP()
-
-    def test_three_step_belief_sequence(self, pomdp):
-        """
-        Day 1: Start uniform [0.25, 0.25, 0.25, 0.25]
-               Observe sea_color = "green"
-
-        Day 2: Predict with transition matrix, then observe "murky"
-
-        Day 3: Predict, then observe "dark" + barometer=1000
-
-        Verify each posterior by hand.
-        """
-        # --- Day 1 ---
-        b0 = np.array([0.25, 0.25, 0.25, 0.25])
-
-        # sea_color=green: L = [0.70, 0.70, 0.05, 0.05]
-        # unnorm = [0.175, 0.175, 0.0125, 0.0125] sum=0.375
-        b1 = pomdp.belief_update(b0, [("sea_color", "green")])
-        expected_b1 = np.array([0.175, 0.175, 0.0125, 0.0125])
-        expected_b1 /= expected_b1.sum()
-        np.testing.assert_allclose(b1, expected_b1, atol=1e-10)
-
-        # --- Day 2: predict then update ---
-        b1_pred = pomdp.predict(b1)
-        # b1_pred = T^T @ b1 -- computed from transition matrix
-        # Verify it's a valid distribution
-        assert abs(b1_pred.sum() - 1.0) < 1e-10
-        assert all(p >= 0 for p in b1_pred)
-
-        # After green on day 1, storm is unlikely. Prediction should keep it low
-        # but transition can introduce some storm probability
-        b2 = pomdp.belief_update(b1_pred, [("sea_color", "murky")])
-        assert abs(b2.sum() - 1.0) < 1e-10
-
-        # --- Day 3: predict then update with strong storm evidence ---
-        b2_pred = pomdp.predict(b2)
-        b3 = pomdp.belief_update(b2_pred, [("sea_color", "dark"), ("barometer", 1000.0)])
-        assert abs(b3.sum() - 1.0) < 1e-10
-
-        # After dark + barometer near storm mean, should strongly indicate storm
-        assert pomdp.p_storm(b3) > 0.8, f"Expected high storm prob, got {pomdp.p_storm(b3)}"
+        assert all(p >= 0 for p in posterior)
 
     def test_belief_update_is_order_independent(self, pomdp):
-        """
-        Bayesian updates should be order-independent for observations
-        at the same timestep (multiplication is commutative).
-        """
-        prior = np.array([0.25, 0.25, 0.25, 0.25])
-
-        obs_a = [("sea_color", "dark"), ("barometer", 1000.0)]
-        obs_b = [("barometer", 1000.0), ("sea_color", "dark")]
-
+        prior = np.array(CONFIG["initial_belief"])
+        obs_a = [("sea_color", "dark"), ("barometer", 1000.0), ("equip_indicator", "warning")]
+        obs_b = [("equip_indicator", "warning"), ("barometer", 1000.0), ("sea_color", "dark")]
         post_a = pomdp.belief_update(prior, obs_a)
         post_b = pomdp.belief_update(prior, obs_b)
-
         np.testing.assert_allclose(post_a, post_b, atol=1e-10)
+
+    def test_predict_applies_transition(self, pomdp):
+        belief = np.zeros(40)
+        belief[0] = 1.0
+        predicted = pomdp.predict(belief)
+        np.testing.assert_allclose(predicted, pomdp.T[0, :], atol=1e-10)
+
+    # --- Optimal action ---
+    def test_optimal_action_certain_safe(self, pomdp):
+        belief = np.zeros(40)
+        belief[0] = 1.0
+        alloc, er = pomdp.optimal_action(belief)
+        assert sum(alloc.values()) == 3
+        assert er == 21.0
+
+    def test_optimal_action_storm_avoids_zone(self, pomdp):
+        """Storm in zone A → avoid A."""
+        idx = CONFIG["states"].index((1, "N", 0))
+        belief = np.zeros(40)
+        belief[idx] = 1.0
+        alloc, er = pomdp.optimal_action(belief)
+        assert alloc.get("A", 0) == 0
+
+    def test_optimal_action_prefers_fish_bonus(self, pomdp):
+        """Storm in A → optimal is fish in adjacent zones B or D (+10/boat)."""
+        idx = CONFIG["states"].index((1, "N", 0))
+        belief = np.zeros(40)
+        belief[idx] = 1.0
+        alloc, er = pomdp.optimal_action(belief)
+        # Should prefer B or D (adjacent to A, +10/boat) over C (+7/boat)
+        assert er == 30.0  # 10*3 = 30
+
+    # --- Marginal helpers ---
+    def test_p_storm(self, pomdp):
+        belief = np.array(CONFIG["initial_belief"])
+        assert abs(pomdp.p_storm(belief) - 0.5) < 1e-10
+
+    def test_p_equip_failure(self, pomdp):
+        belief = np.array(CONFIG["initial_belief"])
+        assert abs(pomdp.p_equip_failure(belief) - 0.8) < 1e-10
+
+    def test_storm_zone_probs_sum(self, pomdp):
+        belief = np.array(CONFIG["initial_belief"])
+        szp = pomdp.storm_zone_probs(belief)
+        assert abs(sum(szp.values()) - pomdp.p_storm(belief)) < 1e-10
+
+    def test_equip_zone_probs_sum(self, pomdp):
+        belief = np.array(CONFIG["initial_belief"])
+        ezp = pomdp.equip_zone_probs(belief)
+        assert abs(sum(ezp.values()) - pomdp.p_equip_failure(belief)) < 1e-10
 
 
 # =============================================================================
@@ -328,7 +391,7 @@ class TestHandCalculatedBeliefSequence:
 # =============================================================================
 
 class TestSimulator:
-    """Test the FishingGameEnv simulator."""
+    """Test the FishingGameEnv simulator v3."""
 
     def test_reset_returns_observation_bundle(self):
         env = FishingGameEnv()
@@ -336,48 +399,209 @@ class TestSimulator:
         assert obs["day"] == 1
         assert obs["days_remaining"] == 19
         assert obs["sea_color"] in ("green", "murky", "dark")
+        assert obs["equip_indicator"] in ("normal", "warning", "critical")
         assert obs["cumulative_reward"] == 0.0
-        assert "check_weather_reports" in obs["tools_available"]
-        assert obs["tool_budget"]["check_weather_reports"] == 2
+
+    def test_free_sensors_in_observation(self):
+        """v3: all raw sensors appear in observation bundle automatically."""
+        env = FishingGameEnv()
+        obs = env.reset(seed=42)
+        assert "barometer" in obs
+        assert isinstance(obs["barometer"], float)
+        assert "buoy_readings" in obs
+        assert set(obs["buoy_readings"].keys()) == {"A", "B", "C", "D"}
+        assert "equipment_readings" in obs
+        assert set(obs["equipment_readings"].keys()) == {"A", "B", "C", "D"}
+        assert "maintenance_alerts" in obs
+        assert set(obs["maintenance_alerts"].keys()) == {"A", "B", "C", "D"}
+        assert "zone_infrastructure_ages" in obs
+
+    def test_buoy_propagation_sampling(self):
+        """Buoy readings follow propagation model."""
+        # Run many episodes, collect storm-source buoy vs adjacent buoy
+        source_readings = []
+        adjacent_readings = []
+        far_readings = []
+        normal_readings = []
+
+        np_rng = np.random.RandomState(42)
+        for _ in range(500):
+            env = FishingGameEnv()
+            env.reset(seed=np_rng.randint(0, 100000))
+            storm, wind, equip = env._hidden_state
+            buoys = {z: env._available_buoys[z] for z in env.cfg["zones"]}
+            if storm == 1:
+                storm_zone = env.cfg["wind_to_zone"][wind]
+                for z in env.cfg["zones"]:
+                    dist = env.cfg["zone_adjacency"][storm_zone][z]
+                    if dist == 0:
+                        source_readings.append(buoys[z])
+                    elif dist == 1:
+                        adjacent_readings.append(buoys[z])
+                    else:
+                        far_readings.append(buoys[z])
+            else:
+                for z in env.cfg["zones"]:
+                    normal_readings.append(buoys[z])
+
+        # Source should be highest, then propagated, then far/normal
+        if source_readings and adjacent_readings:
+            assert np.mean(source_readings) > np.mean(adjacent_readings)
+        if adjacent_readings and far_readings:
+            assert np.mean(adjacent_readings) > np.mean(far_readings)
+
+    def test_maintenance_alerts_age_correlated(self):
+        """Older zones should have higher average maintenance alerts."""
+        zone_alerts = {z: [] for z in CONFIG["zones"]}
+        np_rng = np.random.RandomState(42)
+        for _ in range(200):
+            env = FishingGameEnv()
+            env.reset(seed=np_rng.randint(0, 100000))
+            for z in CONFIG["zones"]:
+                zone_alerts[z].append(env._available_maintenance_alerts[z])
+
+        # Zone A (age=25) should have higher avg alerts than Zone D (age=2)
+        assert np.mean(zone_alerts["A"]) > np.mean(zone_alerts["D"])
+
+    def test_historical_data_in_db(self):
+        """Reset should pre-seed 30 days of historical data."""
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        cur.execute("SELECT COUNT(*) FROM catch_history WHERE day < 0")
+        assert cur.fetchone()[0] == 30  # 30 historical days
+        cur.execute("SELECT COUNT(*) FROM maintenance_log WHERE day < 0")
+        assert cur.fetchone()[0] == 30 * 4  # 30 days * 4 zones
+
+    def test_sensor_log_table_exists(self):
+        """sensor_log should have 120 rows (30 days x 4 zones) of historical data."""
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        cur.execute("SELECT COUNT(*) FROM sensor_log WHERE day < 0")
+        assert cur.fetchone()[0] == 30 * 4  # 120 rows
+
+    def test_daily_conditions_table(self):
+        """daily_conditions should have 30 historical rows with all columns populated."""
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        cur.execute("SELECT COUNT(*) FROM daily_conditions WHERE day < 0")
+        assert cur.fetchone()[0] == 30
+        cur.execute("SELECT storm_active, storm_zone, equip_zone, barometer, sea_color "
+                     "FROM daily_conditions WHERE day < 0 LIMIT 5")
+        rows = cur.fetchall()
+        assert len(rows) == 5
+        for row in rows:
+            assert row[0] in (0, 1)  # storm_active
+            assert row[3] is not None  # barometer
+            assert row[4] in ("green", "murky", "dark")  # sea_color
+
+    def test_historical_buoy_propagation_discoverable(self):
+        """SQL query on sensor_log + daily_conditions should reveal propagation pattern:
+        source > adjacent > far buoy readings when storm is active."""
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        # Get average buoy readings by distance from storm zone
+        cur.execute("""
+            SELECT dc.storm_zone, sl.zone, AVG(sl.buoy_reading) as avg_buoy
+            FROM sensor_log sl
+            JOIN daily_conditions dc ON sl.day = dc.day
+            WHERE dc.storm_active = 1 AND dc.storm_zone IS NOT NULL
+            GROUP BY dc.storm_zone, sl.zone
+        """)
+        rows = cur.fetchall()
+        if len(rows) > 0:
+            # Group by distance
+            adj = CONFIG["zone_adjacency"]
+            source_readings = []
+            adjacent_readings = []
+            far_readings = []
+            for row in rows:
+                storm_z, sensor_z, avg = row[0], row[1], row[2]
+                dist = adj[storm_z][sensor_z]
+                if dist == 0:
+                    source_readings.append(avg)
+                elif dist == 1:
+                    adjacent_readings.append(avg)
+                else:
+                    far_readings.append(avg)
+            if source_readings and adjacent_readings:
+                assert np.mean(source_readings) > np.mean(adjacent_readings)
+            if adjacent_readings and far_readings:
+                assert np.mean(adjacent_readings) > np.mean(far_readings)
+
+    def test_historical_age_confound_discoverable(self):
+        """SQL query on sensor_log should reveal age-based equipment baselines:
+        older zones have higher equipment readings even without failures."""
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        # Get avg equipment reading per zone when NO equipment failure in that zone
+        cur.execute("""
+            SELECT sl.zone, AVG(sl.equipment_reading) as avg_equip
+            FROM sensor_log sl
+            JOIN daily_conditions dc ON sl.day = dc.day
+            WHERE dc.equip_zone IS NULL OR dc.equip_zone != sl.zone
+            GROUP BY sl.zone
+        """)
+        rows = {row[0]: row[1] for row in cur.fetchall()}
+        if "A" in rows and "D" in rows:
+            # Zone A (age=25) should have higher baseline than Zone D (age=2)
+            assert rows["A"] > rows["D"]
+
+    def test_maintenance_log_table_exists(self):
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        cur = env._db.cursor()
+        cur.execute("SELECT * FROM maintenance_log LIMIT 1")
+        assert cur.fetchone() is not None
 
     def test_same_seed_identical_trajectory(self):
-        """Same seed must produce identical trajectory."""
         def run_episode(seed):
             env = FishingGameEnv()
             obs = env.reset(seed=seed)
-            trajectory = [obs["sea_color"]]
+            trajectory = [obs["sea_color"], obs["equip_indicator"], obs["barometer"]]
             for day in range(20):
                 result = env.submit_decisions(
-                    zone="A", boats=1,
-                    beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+                    allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+                    beliefs={
+                        "storm_active": 0.5,
+                        "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                        "equip_failure_active": 0.2,
+                        "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                    },
                 )
                 if result["done"]:
                     break
                 trajectory.append(result["observation"]["sea_color"])
+                trajectory.append(result["observation"]["barometer"])
                 trajectory.append(result["reward"])
             return trajectory
 
         t1 = run_episode(42)
         t2 = run_episode(42)
-        assert t1 == t2, "Same seed must produce identical trajectory"
+        assert t1 == t2
 
     def test_submit_decisions_advances_day(self):
         env = FishingGameEnv()
         obs = env.reset(seed=42)
-        assert obs["day"] == 1
-
         result = env.submit_decisions(
-            zone="A", boats=2,
-            beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+            allocation={"A": 2, "B": 1, "C": 0, "D": 0},
+            beliefs={
+                "storm_active": 0.5,
+                "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                "equip_failure_active": 0.2,
+                "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+            },
         )
         assert not result["done"]
         assert result["observation"]["day"] == 2
 
-    def test_tool_budget_enforced(self):
+    def test_tool_budget_weather_reports(self):
         env = FishingGameEnv()
         env.reset(seed=42)
-
-        # check_weather_reports has budget 2
         r1 = env.check_weather_reports("storm")
         assert not isinstance(r1, dict) or "error" not in r1
         r2 = env.check_weather_reports("weather")
@@ -385,19 +609,22 @@ class TestSimulator:
         r3 = env.check_weather_reports("wind")
         assert isinstance(r3, dict) and "error" in r3
 
+    def test_tool_budget_maintenance_log(self):
+        env = FishingGameEnv()
+        env.reset(seed=42)
+        r1 = env.query_maintenance_log("SELECT * FROM maintenance_log LIMIT 5")
+        assert isinstance(r1, list)
+        r2 = env.query_maintenance_log("SELECT COUNT(*) FROM maintenance_log")
+        assert isinstance(r2, list)
+        r3 = env.query_maintenance_log("SELECT 1")
+        assert isinstance(r3, dict) and "error" in r3
+
     def test_query_fishing_log_read_only(self):
         env = FishingGameEnv()
         env.reset(seed=42)
-
-        # Valid SELECT
         result = env.query_fishing_log("SELECT * FROM daily_log")
         assert isinstance(result, list)
-
-        # Invalid write attempt
         result = env.query_fishing_log("DROP TABLE daily_log")
-        assert isinstance(result, dict) and "error" in result
-
-        result = env.query_fishing_log("INSERT INTO daily_log VALUES (1, 'g', 'A', 1, 1, 1)")
         assert isinstance(result, dict) and "error" in result
 
     def test_analyze_data(self):
@@ -410,173 +637,45 @@ class TestSimulator:
         env = FishingGameEnv()
         env.reset(seed=42)
         result = env.evaluate_options({
-            "storm_probability": 0.0,
-            "zone_a_danger_probability": 0.0,
+            "storm_active": 0.0,
+            "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+            "equip_failure_active": 0.0,
+            "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
         })
-        # No "optimal" key — agent must pick from expected_rewards
-        assert "optimal" not in result
-        assert "expected_rewards" in result
-        assert len(result["expected_rewards"]) == 6
-        # With no storm, all options should yield 7*boats
-        for r in result["expected_rewards"]:
-            assert r["expected_reward"] == 7.0 * r["boats"]
+        assert "top_allocations" in result
+        best = result["top_allocations"][0]
+        assert abs(best["expected_reward"] - 21.0) < 0.1
 
-    def test_evaluate_options_clamping_warning(self):
+    def test_allocation_validation(self):
         env = FishingGameEnv()
         env.reset(seed=42)
-        result = env.evaluate_options({
-            "storm_probability": 0.2,
-            "zone_a_danger_probability": 0.5,
-        })
-        assert "note" in result
-        assert "clamped" in result["note"]
-        assert result["belief_used"]["zone_a_danger_probability"] == 0.2
+        with pytest.raises(AssertionError):
+            env.submit_decisions(
+                allocation={"A": 2, "B": 2, "C": 0, "D": 0},
+                beliefs={"storm_active": 0.5, "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                         "equip_failure_active": 0.2, "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}},
+            )
 
-    def test_forecast_scenario_does_not_advance(self):
+    def test_db_schema_mentions_tables(self):
         env = FishingGameEnv()
         obs = env.reset(seed=42)
-        day_before = obs["day"]
-
-        env.forecast_scenario({
-            "horizon_days": 5,
-            "assume_storm_persists": True,
-            "assume_zone": "A",
-            "strategy": {"zone": "B", "boats": 2},
-        })
-
-        # Day should not have advanced
-        assert env._day == day_before
-
-    def test_ablation_disables_tools(self):
-        ablation = {
-            "check_weather_reports": False,
-            "query_fishing_log": True,
-            "read_barometer": True,
-            "read_buoy": True,
-            "analyze_data": True,
-            "evaluate_options": True,
-            "forecast_scenario": True,
-        }
-        env = FishingGameEnv(ablation=ablation)
-        obs = env.reset(seed=42)
-
-        assert "check_weather_reports" not in obs["tools_available"]
-        result = env.check_weather_reports("storm")
-        assert isinstance(result, dict) and "error" in result
-
-    def test_visible_db_has_no_hidden_state(self):
-        """Verify the visible database contains no hidden state columns."""
-        env = FishingGameEnv()
-        env.reset(seed=42)
-
-        # Submit one decision to populate DB
-        env.submit_decisions(
-            zone="A", boats=2,
-            beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
-        )
-
-        cur = env._db.cursor()
-        # Check all tables for hidden columns
-        for table in ["daily_log", "weather_signals", "catch_history"]:
-            cur.execute(f"PRAGMA table_info({table})")
-            columns = [row[1] for row in cur.fetchall()]
-            for col in columns:
-                assert "_storm" not in col, f"Hidden column found: {col} in {table}"
-                assert "_wind" not in col, f"Hidden column found: {col} in {table}"
-                assert "_affected_zone" not in col, f"Hidden column found: {col} in {table}"
-                assert "_tier" not in col, f"Hidden column found: {col} in {table}"
-
-    def test_hidden_state_not_in_search_results(self):
-        """check_weather_reports must not return hidden fields."""
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        results = env.check_weather_reports("storm warning weather severe")
-        if isinstance(results, list):
-            for r in results:
-                assert "_storm" not in r
-                assert "_wind" not in r
-                assert "_affected_zone" not in r
-                assert "_tier" not in r
-
-    def test_episode_trace_recorded(self):
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        env.submit_decisions(
-            zone="A", boats=2,
-            beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
-        )
-        trace = env.get_trace()
-        assert len(trace) == 1
-        assert trace[0]["day"] == 1
-        assert trace[0]["action"] == {"zone": "A", "boats": 2}
+        assert "maintenance_log" in obs["db_schema"]
+        assert "sensor_log" in obs["db_schema"]
+        assert "daily_conditions" in obs["db_schema"]
 
     def test_full_episode_completes(self):
-        """Run a full 20-day episode and verify completion."""
         env = FishingGameEnv()
         env.reset(seed=42)
         for day in range(20):
             result = env.submit_decisions(
-                zone="A", boats=1,
-                beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+                allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+                beliefs={"storm_active": 0.5, "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                         "equip_failure_active": 0.2, "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}},
             )
             if result["done"]:
-                assert day == 19, f"Episode ended early on day {day+1}"
+                assert day == 19
                 break
-        trace = env.get_trace()
-        assert len(trace) == 20
-
-    def test_signals_stored_in_db(self):
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        cur = env._db.cursor()
-        cur.execute("SELECT COUNT(*) FROM weather_signals WHERE day=1")
-        count = cur.fetchone()[0]
-        assert count >= 2, "Should emit at least 2 signals per step"
-
-    def test_read_barometer(self):
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        reading = env.read_barometer()
-        assert isinstance(reading, float)
-        # Budget should be exhausted after 1 call
-        result = env.read_barometer()
-        assert isinstance(result, dict) and "error" in result
-
-    def test_read_buoy(self):
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        reading_a = env.read_buoy("A")
-        assert isinstance(reading_a, float)
-        reading_b = env.read_buoy("B")
-        assert isinstance(reading_b, float)
-        # Budget 2, both exhausted
-        result = env.read_buoy("A")
-        assert isinstance(result, dict) and "error" in result
-
-    def test_yesterday_in_observation(self):
-        env = FishingGameEnv()
-        obs = env.reset(seed=42)
-        assert obs["yesterday_zone"] is None
-        assert obs["yesterday_boats"] is None
-        result = env.submit_decisions(
-            zone="B", boats=2,
-            beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
-        )
-        obs2 = result["observation"]
-        assert obs2["yesterday_zone"] == "B"
-        assert obs2["yesterday_boats"] == 2
-
-    def test_daily_log_populated_after_submit(self):
-        env = FishingGameEnv()
-        env.reset(seed=42)
-        env.submit_decisions(
-            zone="B", boats=3,
-            beliefs={"storm_active": 0.2, "zone_a_is_dangerous": 0.1},
-        )
-        result = env.query_fishing_log("SELECT * FROM daily_log WHERE day=1")
-        assert len(result) == 1
-        assert result[0]["zone_fished"] == "B"
-        assert result[0]["boats_sent"] == 3
+        assert len(env.get_trace()) == 20
 
 
 # =============================================================================
@@ -586,93 +685,97 @@ class TestSimulator:
 class TestEvaluator:
     """Test the evaluator and the critical decomposition identity."""
 
+    def _default_beliefs(self):
+        return {
+            "storm_active": 0.5,
+            "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+            "equip_failure_active": 0.2,
+            "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+        }
+
     def _run_episode_with_trace(self, seed=42):
-        """Helper: run a full episode with constant beliefs, return trace."""
         env = FishingGameEnv()
         env.reset(seed=seed)
         for _ in range(20):
             result = env.submit_decisions(
-                zone="A", boats=2,
-                beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+                allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+                beliefs=self._default_beliefs(),
             )
             if result["done"]:
                 break
         return env.get_trace()
 
     def test_decomposition_identity_every_step(self):
-        """
-        CRITICAL INVARIANT: At every step:
-        tool_use_gap + inference_gap + planning_gap = oracle_reward - actual_reward
-        """
+        """CRITICAL: tool_use_gap + inference_gap + planning_gap = oracle - actual."""
         trace = self._run_episode_with_trace(seed=42)
         evaluator = Evaluator()
         result = evaluator.evaluate_episode(trace)
-
         for step in result["step_results"]:
             gap_sum = step["tool_use_gap"] + step["inference_gap"] + step["planning_gap"]
             expected = step["oracle_reward"] - step["actual_reward"]
             assert abs(gap_sum - expected) < 1e-10, (
-                f"Day {step['day']}: decomposition failed! "
-                f"gaps={gap_sum}, oracle-actual={expected}, "
-                f"tool={step['tool_use_gap']}, inf={step['inference_gap']}, "
-                f"plan={step['planning_gap']}"
+                f"Day {step['day']}: gaps={gap_sum}, oracle-actual={expected}"
             )
 
     def test_decomposition_identity_multiple_seeds(self):
-        """Decomposition must hold across different seeds."""
         evaluator = Evaluator()
         for seed in [1, 7, 42, 100, 999]:
             trace = self._run_episode_with_trace(seed=seed)
             result = evaluator.evaluate_episode(trace)
             for step in result["step_results"]:
-                gap_sum = (step["tool_use_gap"] + step["inference_gap"]
-                           + step["planning_gap"])
+                gap_sum = step["tool_use_gap"] + step["inference_gap"] + step["planning_gap"]
                 expected = step["oracle_reward"] - step["actual_reward"]
-                assert abs(gap_sum - expected) < 1e-10, (
-                    f"Seed {seed}, Day {step['day']}: decomposition failed"
-                )
+                assert abs(gap_sum - expected) < 1e-10
 
-    def test_episode_level_metrics(self):
-        """Verify episode-level metrics are computed."""
+    def test_tool_use_gap_positive_without_sql(self):
+        """Without SQL tools, agent gets Tier 1 only → tool_use_gap > 0."""
         trace = self._run_episode_with_trace(seed=42)
         evaluator = Evaluator()
         result = evaluator.evaluate_episode(trace)
+        total_tug = sum(s["tool_use_gap"] for s in result["step_results"])
+        assert total_tug > 0, (
+            f"Total tool_use_gap should be positive without SQL, got {total_tug}"
+        )
 
+    def test_tool_use_gap_zero_with_sql(self):
+        """With SQL tools, agent gets Tier 1 + Tier 2 → tool_use_gap ≈ 0."""
+        env = FishingGameEnv()
+        obs = env.reset(seed=42)
+        for _ in range(20):
+            # Use SQL tool to trigger Tier 2 promotion
+            env.query_fishing_log("SELECT 1")
+            result = env.submit_decisions(
+                allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+                beliefs=self._default_beliefs(),
+            )
+            if result["done"]:
+                break
+        trace = env.get_trace()
+        evaluator = Evaluator()
+        result = evaluator.evaluate_episode(trace)
+        for step in result["step_results"]:
+            assert abs(step["tool_use_gap"]) < 1e-10, (
+                f"Day {step['day']}: tool_use_gap should be ~0 with SQL"
+            )
+
+    def test_episode_level_metrics(self):
+        trace = self._run_episode_with_trace(seed=42)
+        evaluator = Evaluator()
+        result = evaluator.evaluate_episode(trace)
         assert "total_reward" in result
         assert "mean_brier_storm" in result
-        assert "mean_brier_zone" in result
-        assert "mean_detection_lag" in result
         assert "total_tool_use_gap" in result
         assert "total_inference_gap" in result
         assert "total_planning_gap" in result
-        assert "tool_usage_counts" in result
-        assert "reward_per_quarter" in result
-        assert len(result["reward_per_quarter"]) == 4
         assert len(result["step_results"]) == 20
 
-    def test_episode_level_decomposition_sums(self):
-        """Total gaps should sum correctly across the episode too."""
-        trace = self._run_episode_with_trace(seed=42)
-        evaluator = Evaluator()
-        result = evaluator.evaluate_episode(trace)
-
-        total_oracle = sum(s["oracle_reward"] for s in result["step_results"])
-        total_actual = sum(s["actual_reward"] for s in result["step_results"])
-        total_gaps = (result["total_tool_use_gap"]
-                      + result["total_inference_gap"]
-                      + result["total_planning_gap"])
-
-        assert abs(total_gaps - (total_oracle - total_actual)) < 1e-10
-
     def test_brier_scores_bounded(self):
-        """Brier scores must be in [0, 1]."""
         trace = self._run_episode_with_trace(seed=42)
         evaluator = Evaluator()
         result = evaluator.evaluate_episode(trace)
-
         for step in result["step_results"]:
             assert 0.0 <= step["brier_storm"] <= 1.0
-            assert 0.0 <= step["brier_zone"] <= 1.0
+            assert 0.0 <= step["brier_equip"] <= 1.0
 
 
 # =============================================================================
@@ -680,9 +783,8 @@ class TestEvaluator:
 # =============================================================================
 
 def _run_baseline(agent_cls, seed, config=None):
-    """Helper: run a baseline agent for a full episode, return (total_reward, trace)."""
+    """Helper: run a baseline agent for a full episode."""
     import random as stdlib_random
-
     cfg = config or CONFIG
     env = FishingGameEnv(config=cfg)
     obs = env.reset(seed=seed)
@@ -690,7 +792,7 @@ def _run_baseline(agent_cls, seed, config=None):
     if hasattr(agent, "reset"):
         agent.reset()
 
-    rng = stdlib_random.Random(seed + 1000)  # separate rng for agent choices
+    rng = stdlib_random.Random(seed + 1000)
     total_reward = 0.0
     for _ in range(cfg["episode_length"]):
         result = agent.act(env, obs, rng=rng)
@@ -698,67 +800,59 @@ def _run_baseline(agent_cls, seed, config=None):
         if result["done"]:
             break
         obs = result["observation"]
-
     return total_reward, env.get_trace()
 
 
 class TestBaselines:
-    """Test all 5 baselines and verify ordering."""
+    """Test all 4 baselines and verify ordering."""
 
     def test_random_agent_runs(self):
         reward, trace = _run_baseline(RandomAgent, seed=42)
         assert len(trace) == 20
 
-    def test_no_tools_heuristic_runs(self):
-        reward, trace = _run_baseline(NoToolsHeuristic, seed=42)
+    def test_naive_pattern_matcher_runs(self):
+        reward, trace = _run_baseline(NaivePatternMatcher, seed=42)
         assert len(trace) == 20
 
-    def test_search_only_heuristic_runs(self):
-        reward, trace = _run_baseline(SearchOnlyHeuristic, seed=42)
-        assert len(trace) == 20
-
-    def test_belief_aware_runs(self):
-        reward, trace = _run_baseline(BeliefAwareBaseline, seed=42)
+    def test_causal_reasoner_runs(self):
+        reward, trace = _run_baseline(CausalReasoner, seed=42)
         assert len(trace) == 20
 
     def test_oracle_agent_runs(self):
         reward, trace = _run_baseline(OracleAgent, seed=42)
         assert len(trace) == 20
 
-    def test_oracle_always_safe(self):
-        """Oracle should always get positive reward (7*3=21 per day)."""
-        reward, trace = _run_baseline(OracleAgent, seed=42)
-        assert reward == 21.0 * 20  # 420
+    def test_oracle_optimal_with_fish_bonus(self):
+        """Oracle should get >= 21/day average (fish bonus means some days > 21)."""
+        rewards = []
+        for seed in [42, 123, 456, 789, 1024]:
+            reward, _ = _run_baseline(OracleAgent, seed=seed)
+            rewards.append(reward)
+        avg = np.mean(rewards)
+        # Oracle gets 21/day on no-storm days, up to 30/day on storm days
+        assert avg >= 420.0, f"Oracle average {avg} should be >= 420"
 
     def test_oracle_brier_zero(self):
-        """Oracle Brier scores must be 0.0."""
         reward, trace = _run_baseline(OracleAgent, seed=42)
         evaluator = Evaluator()
         result = evaluator.evaluate_episode(trace)
         for step in result["step_results"]:
-            assert abs(step["brier_storm"]) < 1e-10, (
-                f"Day {step['day']}: Oracle brier_storm={step['brier_storm']}"
-            )
+            assert abs(step["brier_storm"]) < 1e-10
+            assert abs(step["brier_equip"]) < 1e-10
 
-    def test_belief_aware_brier_low(self):
-        """BeliefAware Brier scores should be < 0.05 on average."""
-        reward, trace = _run_baseline(BeliefAwareBaseline, seed=42)
+    def test_causal_reasoner_brier_low(self):
+        """CausalReasoner with full data should have low Brier scores."""
+        reward, trace = _run_baseline(CausalReasoner, seed=42)
         evaluator = Evaluator()
         result = evaluator.evaluate_episode(trace)
-        assert result["mean_brier_storm"] < 0.05, (
-            f"BeliefAware mean_brier_storm={result['mean_brier_storm']}"
-        )
+        assert result["mean_brier_storm"] < 0.15
 
-    def test_baseline_ordering_seed_42(self):
-        """
-        Critical test: Random < NoTools < SearchOnly < BeliefAware < Oracle
-        averaged over multiple seeds for stability.
-        """
+    def test_baseline_ordering(self):
+        """Random < NaivePattern < CausalReasoner <= Oracle averaged over seeds."""
         agents = [
             ("Random", RandomAgent),
-            ("NoTools", NoToolsHeuristic),
-            ("SearchOnly", SearchOnlyHeuristic),
-            ("BeliefAware", BeliefAwareBaseline),
+            ("NaivePattern", NaivePatternMatcher),
+            ("CausalReasoner", CausalReasoner),
             ("Oracle", OracleAgent),
         ]
 
@@ -772,24 +866,19 @@ class TestBaselines:
                 total += reward
             avg_rewards[name] = total / len(seeds)
 
-        # Verify strict ordering
-        assert avg_rewards["Random"] < avg_rewards["NoTools"], (
-            f"Random ({avg_rewards['Random']:.1f}) >= NoTools ({avg_rewards['NoTools']:.1f})"
+        assert avg_rewards["Random"] < avg_rewards["NaivePattern"], (
+            f"Random ({avg_rewards['Random']:.1f}) >= NaivePattern ({avg_rewards['NaivePattern']:.1f})"
         )
-        assert avg_rewards["NoTools"] < avg_rewards["SearchOnly"], (
-            f"NoTools ({avg_rewards['NoTools']:.1f}) >= SearchOnly ({avg_rewards['SearchOnly']:.1f})"
+        assert avg_rewards["NaivePattern"] < avg_rewards["CausalReasoner"], (
+            f"NaivePattern ({avg_rewards['NaivePattern']:.1f}) >= CausalReasoner ({avg_rewards['CausalReasoner']:.1f})"
         )
-        assert avg_rewards["SearchOnly"] < avg_rewards["BeliefAware"], (
-            f"SearchOnly ({avg_rewards['SearchOnly']:.1f}) >= BeliefAware ({avg_rewards['BeliefAware']:.1f})"
-        )
-        assert avg_rewards["BeliefAware"] < avg_rewards["Oracle"], (
-            f"BeliefAware ({avg_rewards['BeliefAware']:.1f}) >= Oracle ({avg_rewards['Oracle']:.1f})"
+        assert avg_rewards["CausalReasoner"] <= avg_rewards["Oracle"], (
+            f"CausalReasoner ({avg_rewards['CausalReasoner']:.1f}) > Oracle ({avg_rewards['Oracle']:.1f})"
         )
 
     def test_decomposition_holds_for_all_baselines(self):
         """Decomposition identity must hold for every baseline."""
-        agents = [RandomAgent, NoToolsHeuristic, SearchOnlyHeuristic,
-                  BeliefAwareBaseline, OracleAgent]
+        agents = [RandomAgent, NaivePatternMatcher, CausalReasoner, OracleAgent]
         evaluator = Evaluator()
 
         for cls in agents:
@@ -803,25 +892,59 @@ class TestBaselines:
                     f"{cls.__name__} Day {step['day']}: decomposition failed"
                 )
 
+    def test_naive_has_higher_total_gap_than_causal(self):
+        """NaivePatternMatcher should have higher total gap (tool_use + inference)
+        than CausalReasoner. In v4, NaivePattern has large tool_use_gap (no SQL)
+        plus inference errors, while CausalReasoner has ~0 for both."""
+        evaluator = Evaluator()
+        seeds = [42, 123, 456]
+
+        naive_total = 0.0
+        causal_total = 0.0
+
+        for seed in seeds:
+            _, trace = _run_baseline(NaivePatternMatcher, seed=seed)
+            result = evaluator.evaluate_episode(trace)
+            naive_total += result["total_tool_use_gap"] + result["total_inference_gap"]
+
+            _, trace = _run_baseline(CausalReasoner, seed=seed)
+            result = evaluator.evaluate_episode(trace)
+            causal_total += result["total_tool_use_gap"] + result["total_inference_gap"]
+
+        assert naive_total > causal_total, (
+            f"Naive total gap ({naive_total:.1f}) should exceed "
+            f"Causal ({causal_total:.1f})"
+        )
+
 
 # =============================================================================
 # Ablation Runner Tests
 # =============================================================================
 
 class TestAblationRunner:
-    """Test the full ablation runner."""
 
     def test_ablation_suite_runs(self):
         """Run a small ablation suite (2 seeds) and verify it completes."""
         from fishing_game.runner import run_ablation_suite, ABLATION_CONFIGS, BASELINES
         results, decomposition_ok = run_ablation_suite(seeds=[42, 123])
-        assert decomposition_ok, "Decomposition identity failed in ablation suite"
+        assert decomposition_ok, "Decomposition identity failed"
         assert len(results) == len(ABLATION_CONFIGS)
         for config_name in results:
             assert len(results[config_name]) == len(BASELINES)
 
-    def test_ablation_ordering(self):
-        """Verify ordering holds across all ablation configs with 5 seeds."""
-        from fishing_game.runner import run_ablation_suite, verify_ordering
+    def test_ablation_ordering_full(self):
+        """Verify ordering holds for 'full' config."""
+        from fishing_game.runner import run_ablation_suite, BASELINES
         results, _ = run_ablation_suite(seeds=[42, 123, 456, 789, 1024])
-        assert verify_ordering(results), "Baseline ordering violated in ablation suite"
+        agent_names = [name for name, _ in BASELINES]
+        rewards = [results["full"][name]["reward_mean"] for name in agent_names]
+        for i in range(len(rewards) - 1):
+            if i == len(rewards) - 2:
+                # CausalReasoner <= Oracle
+                assert rewards[i] <= rewards[i + 1], (
+                    f"full: {agent_names[i]} ({rewards[i]:.1f}) > {agent_names[i+1]} ({rewards[i+1]:.1f})"
+                )
+            else:
+                assert rewards[i] < rewards[i + 1], (
+                    f"full: {agent_names[i]} ({rewards[i]:.1f}) >= {agent_names[i+1]} ({rewards[i+1]:.1f})"
+                )

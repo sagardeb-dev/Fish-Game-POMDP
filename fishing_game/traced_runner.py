@@ -1,17 +1,8 @@
 """
-Traced LLM agent runner.
+Traced LLM agent runner for Fishing Game v2.
 
 Captures every input/output at every step of the agent-environment interaction
 and saves the full trace to a JSON file.
-
-Each step records:
-  - The observation the agent received
-  - Every LLM call (messages sent, tools available)
-  - Every tool call the LLM made (name, arguments)
-  - Every tool result the environment returned
-  - The final decision (zone, boats, beliefs, reasoning)
-  - The environment's response (reward, done, next observation)
-  - Hidden state (for post-hoc analysis, never shown to agent)
 """
 
 import json
@@ -34,19 +25,12 @@ from fishing_game.llm_agent import (
 class TracedLLMAgent(LLMAgent):
     """
     Wraps any LLM agent with full input/output tracing.
-    Every message sent to the LLM and every result returned
-    is captured in a structured trace.
     """
 
     def __init__(self, inner_agent, config=None):
-        """
-        Args:
-            inner_agent: An LLMAgent subclass instance (e.g., SimulatedLLMAgent)
-                         that implements _call_llm().
-        """
         super().__init__(config)
         self._inner = inner_agent
-        self.step_traces = []  # one entry per day
+        self.step_traces = []
 
     def reset(self):
         super().reset()
@@ -54,13 +38,14 @@ class TracedLLMAgent(LLMAgent):
         self.step_traces = []
 
     def act(self, env, obs, rng=None):
-        """Run one turn with full tracing."""
         step_trace = {
             "day": obs["day"],
             "hidden_state": {
                 "storm": env._hidden_state[0],
                 "wind": env._hidden_state[1],
-                "affected_zone": "A" if env._hidden_state[1] == "N" else "B",
+                "equip": env._hidden_state[2],
+                "storm_zone": env.cfg["wind_to_zone"][env._hidden_state[1]] if env._hidden_state[0] == 1 else None,
+                "equip_zone": env.cfg["equip_to_zone"][env._hidden_state[2]],
                 "state_idx": env._hidden_state_idx,
             },
             "observation_bundle": obs,
@@ -70,10 +55,8 @@ class TracedLLMAgent(LLMAgent):
             "env_result": None,
         }
 
-        # Sync conversation history
         self._inner.conversation_history = list(self.conversation_history)
 
-        # Add observation
         obs_msg = format_observation_message(obs)
         self.conversation_history.append({"role": "user", "content": obs_msg})
         self._inner.conversation_history.append({"role": "user", "content": obs_msg})
@@ -82,7 +65,6 @@ class TracedLLMAgent(LLMAgent):
         max_iterations = 10
 
         for iteration in range(max_iterations):
-            # Record what we're sending to the LLM
             llm_input = {
                 "iteration": iteration,
                 "messages_count": len(self._inner.conversation_history),
@@ -90,7 +72,6 @@ class TracedLLMAgent(LLMAgent):
                 "tools_available": [t["function"]["name"] for t in tools],
             }
 
-            # Call the inner LLM
             tool_calls = self._inner._call_llm(
                 self._inner.conversation_history, tools
             )
@@ -103,21 +84,18 @@ class TracedLLMAgent(LLMAgent):
                     "tool_args": None,
                     "tool_result": None,
                 })
-                # Force default submission
                 result = env.submit_decisions(
-                    zone="A", boats=1,
-                    beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+                    allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+                    beliefs={
+                        "storm_active": 0.5,
+                        "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                        "equip_failure_active": 0.2,
+                        "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                    },
                     reasoning="LLM failed to call submit_decisions.",
                 )
-                step_trace["decision"] = {
-                    "zone": "A", "boats": 1,
-                    "beliefs": {"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
-                    "reasoning": "LLM failed to call submit_decisions.",
-                }
-                step_trace["env_result"] = {
-                    "reward": result["reward"],
-                    "done": result["done"],
-                }
+                step_trace["decision"] = {"allocation": {"A": 1}, "reasoning": "LLM fallback"}
+                step_trace["env_result"] = {"reward": result["reward"], "done": result["done"]}
                 self.step_traces.append(step_trace)
                 return result
 
@@ -127,10 +105,8 @@ class TracedLLMAgent(LLMAgent):
                 if isinstance(tool_args, str):
                     tool_args = json.loads(tool_args)
 
-                # Execute tool
                 result_str, is_submit = execute_tool_call(env, tool_name, tool_args)
 
-                # Record the full exchange
                 call_record = {
                     "llm_input": llm_input,
                     "llm_output": f"tool_call: {tool_name}",
@@ -141,8 +117,6 @@ class TracedLLMAgent(LLMAgent):
                 }
                 step_trace["tool_calls"].append(call_record)
 
-                # Add to both conversation histories
-                # Normalize tool call format for OpenAI compatibility
                 tc_id = tc.get("id", f"call_{tool_name}")
                 tc_args = tc.get("arguments", "{}")
                 if isinstance(tc_args, dict):
@@ -150,21 +124,10 @@ class TracedLLMAgent(LLMAgent):
                 normalized_tc = {
                     "id": tc_id,
                     "type": "function",
-                    "function": {
-                        "name": tool_name,
-                        "arguments": tc_args,
-                    },
+                    "function": {"name": tool_name, "arguments": tc_args},
                 }
-                assistant_msg = {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [normalized_tc],
-                }
-                tool_msg = {
-                    "role": "tool",
-                    "tool_call_id": tc_id,
-                    "content": result_str,
-                }
+                assistant_msg = {"role": "assistant", "content": None, "tool_calls": [normalized_tc]}
+                tool_msg = {"role": "tool", "tool_call_id": tc_id, "content": result_str}
                 self.conversation_history.append(assistant_msg)
                 self.conversation_history.append(tool_msg)
                 self._inner.conversation_history.append(assistant_msg)
@@ -172,13 +135,12 @@ class TracedLLMAgent(LLMAgent):
 
                 if is_submit:
                     step_trace["decision"] = {
-                        "zone": tool_args["zone"],
-                        "boats": tool_args["boats"],
+                        "allocation": tool_args.get("allocation", {}),
                         "beliefs": {
                             "storm_active": tool_args.get("storm_active", 0.5),
-                            "zone_a_is_dangerous": tool_args.get(
-                                "zone_a_is_dangerous", 0.5
-                            ),
+                            "storm_zone_probs": tool_args.get("storm_zone_probs", {}),
+                            "equip_failure_active": tool_args.get("equip_failure_active", 0.2),
+                            "equip_zone_probs": tool_args.get("equip_zone_probs", {}),
                         },
                         "reasoning": tool_args.get("reasoning", ""),
                     }
@@ -192,15 +154,16 @@ class TracedLLMAgent(LLMAgent):
 
         # Safety fallback
         result = env.submit_decisions(
-            zone="A", boats=1,
-            beliefs={"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
+            allocation={"A": 1, "B": 0, "C": 0, "D": 0},
+            beliefs={
+                "storm_active": 0.5,
+                "storm_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+                "equip_failure_active": 0.2,
+                "equip_zone_probs": {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25},
+            },
             reasoning="Max iterations.",
         )
-        step_trace["decision"] = {
-            "zone": "A", "boats": 1,
-            "beliefs": {"storm_active": 0.5, "zone_a_is_dangerous": 0.5},
-            "reasoning": "Max iterations.",
-        }
+        step_trace["decision"] = {"allocation": {"A": 1}, "reasoning": "Max iterations"}
         step_trace["env_result"] = {"reward": result["reward"], "done": result["done"]}
         self.step_traces.append(step_trace)
         return result
@@ -210,15 +173,7 @@ class TracedLLMAgent(LLMAgent):
 
 
 def run_traced_episode(agent_cls=None, seed=42, config=None, save_path=None):
-    """
-    Run a full episode with tracing. Returns the trace dict.
-
-    Args:
-        agent_cls: An LLMAgent subclass. Defaults to SimulatedLLMAgent.
-        seed: Random seed for reproducibility.
-        config: Config dict. Defaults to CONFIG.
-        save_path: If provided, saves the trace as JSON to this path.
-    """
+    """Run a full episode with tracing."""
     cfg = config or CONFIG
     inner = (agent_cls or SimulatedLLMAgent)(config=cfg)
     agent = TracedLLMAgent(inner, config=cfg)
@@ -233,16 +188,15 @@ def run_traced_episode(agent_cls=None, seed=42, config=None, save_path=None):
             break
         obs = result["observation"]
 
-    # Evaluate
     trace = env.get_trace()
     evaluator = Evaluator(config=cfg)
     eval_result = evaluator.evaluate_episode(trace)
 
-    # Build full output
     output = {
         "metadata": {
             "seed": seed,
             "agent": type(inner).__name__,
+            "model": getattr(inner, "model", None),
             "timestamp": datetime.now().isoformat(),
             "episode_length": cfg["episode_length"],
         },
@@ -250,8 +204,11 @@ def run_traced_episode(agent_cls=None, seed=42, config=None, save_path=None):
         "evaluation": {
             "total_reward": eval_result["total_reward"],
             "mean_brier_storm": eval_result["mean_brier_storm"],
-            "mean_brier_zone": eval_result["mean_brier_zone"],
-            "mean_detection_lag": eval_result["mean_detection_lag"],
+            "mean_brier_storm_zone": eval_result["mean_brier_storm_zone"],
+            "mean_brier_equip": eval_result["mean_brier_equip"],
+            "mean_brier_equip_zone": eval_result["mean_brier_equip_zone"],
+            "mean_storm_detection_lag": eval_result["mean_storm_detection_lag"],
+            "mean_equip_detection_lag": eval_result["mean_equip_detection_lag"],
             "total_tool_use_gap": eval_result["total_tool_use_gap"],
             "total_inference_gap": eval_result["total_inference_gap"],
             "total_planning_gap": eval_result["total_planning_gap"],
@@ -270,7 +227,7 @@ def run_traced_episode(agent_cls=None, seed=42, config=None, save_path=None):
 
 
 def print_traced_episode(output):
-    """Pretty-print a traced episode to stdout."""
+    """Pretty-print a traced episode."""
     meta = output["metadata"]
     print(f"Agent: {meta['agent']}, Seed: {meta['seed']}")
     print("=" * 90)
@@ -286,61 +243,43 @@ def print_traced_episode(output):
         print(f"DAY {day}")
         print(f"{'='*90}")
 
-        # Hidden state
-        print(f"  [HIDDEN] storm={hs['storm']}, wind={hs['wind']}, "
-              f"affected_zone={hs['affected_zone']}")
+        print(f"  [HIDDEN] storm={hs['storm']}, wind={hs['wind']}, equip={hs['equip']}, "
+              f"storm_zone={hs['storm_zone']}, equip_zone={hs['equip_zone']}")
         print()
 
-        # What agent sees
-        print(f"  [INPUT] Observation bundle:")
-        print(f"    sea_color:    {obs['sea_color']}")
-        print(f"    yesterday_rw: {obs['yesterday_reward']}")
-        print(f"    cumulative:   {obs['cumulative_reward']}")
-        print(f"    tool_budget:  {obs['tool_budget']}")
+        print(f"  [INPUT] sea_color={obs['sea_color']}, equip_indicator={obs['equip_indicator']}")
+        print(f"    cumulative: {obs['cumulative_reward']}, tool_budget: {obs['tool_budget']}")
         print()
 
-        # Tool call loop
-        print(f"  [TOOL CALLS] ({len(step['tool_calls'])} calls this turn):")
+        print(f"  [TOOL CALLS] ({len(step['tool_calls'])} calls):")
         for i, tc in enumerate(step["tool_calls"]):
             name = tc["tool_name"]
-            args = tc["tool_args"]
-            result = tc["tool_result"]
-
             if name == "submit_decisions":
-                continue  # show separately below
-
-            args_short = json.dumps(args, separators=(",", ":"))
+                continue
+            args_short = json.dumps(tc["tool_args"], separators=(",", ":"))
             if len(args_short) > 80:
                 args_short = args_short[:77] + "..."
-
-            result_short = json.dumps(result, separators=(",", ":"))
+            result_short = json.dumps(tc["tool_result"], separators=(",", ":"))
             if len(result_short) > 120:
                 result_short = result_short[:117] + "..."
-
             print(f"    [{i+1}] {name}({args_short})")
             print(f"        -> {result_short}")
         print()
 
-        # Decision
-        print(f"  [OUTPUT] Decision:")
-        print(f"    zone={decision['zone']}, boats={decision['boats']}")
-        print(f"    beliefs: storm={decision['beliefs']['storm_active']:.2f}, "
-              f"zone_a={decision['beliefs']['zone_a_is_dangerous']:.2f}")
-        print(f"    reasoning: {decision['reasoning']}")
-        print()
-
-        # Environment response
+        print(f"  [OUTPUT] allocation={decision.get('allocation', {})}")
+        if "beliefs" in decision:
+            b = decision["beliefs"]
+            print(f"    storm={b.get('storm_active', '?')}, equip={b.get('equip_failure_active', '?')}")
+        print(f"    reasoning: {decision.get('reasoning', '')}")
         print(f"  [RESULT] reward={env_r['reward']}, done={env_r['done']}")
 
-    # Summary
     ev = output["evaluation"]
     print(f"\n{'='*90}")
     print("EPISODE SUMMARY")
     print(f"{'='*90}")
     print(f"  Total reward:        {ev['total_reward']}")
-    print(f"  Mean Brier (storm):  {ev['mean_brier_storm']:.4f}")
-    print(f"  Mean Brier (zone):   {ev['mean_brier_zone']:.4f}")
-    print(f"  Detection lag:       {ev['mean_detection_lag']}")
+    print(f"  Brier (storm):       {ev['mean_brier_storm']:.4f}")
+    print(f"  Brier (equip):       {ev['mean_brier_equip']:.4f}")
     print(f"  Tool use gap:        {ev['total_tool_use_gap']:.1f}")
     print(f"  Inference gap:       {ev['total_inference_gap']:.1f}")
     print(f"  Planning gap:        {ev['total_planning_gap']:.1f}")
@@ -348,7 +287,6 @@ def print_traced_episode(output):
 
 
 def _safe_parse_json(s):
-    """Try to parse JSON, return raw string on failure."""
     try:
         return json.loads(s)
     except (json.JSONDecodeError, TypeError):

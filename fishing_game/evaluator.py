@@ -1,9 +1,9 @@
 """
-Evaluator for the Fishing Game POMDP.
+Evaluator for the Fishing Game POMDP v2.
 
 Takes POMDP model + episode trace. Computes Bayesian posterior at each step,
-Brier scores, detection lag, 3-way cost decomposition
-(tool_use_gap + inference_gap + planning_gap).
+Brier scores (storm, storm_zone, equip, equip_zone), detection lags for both
+risks, 3-way cost decomposition.
 
 Critical invariant: decomposition identity holds at every step:
   tool_use_gap + inference_gap + planning_gap = oracle_reward - actual_reward
@@ -23,62 +23,62 @@ class Evaluator:
         """
         Evaluate a full episode trace.
 
-        Args:
-            trace: list of step dicts from env.get_trace()
-
-        Returns:
-            dict with per-step and episode-level metrics
+        Returns dict with per-step and episode-level metrics.
         """
         belief = np.array(self.cfg["initial_belief"], dtype=np.float64)
         step_results = []
-        storm_onsets = []  # (day, detection_day) pairs
+        storm_onsets = []
+        equip_onsets = []
         prev_storm = False
+        prev_equip = False
 
         for step in trace:
             day = step["day"]
             hidden_state_idx = step["hidden_state_idx"]
             hidden_state = step["hidden_state"]
-            storm_active = hidden_state[0] == 1
-            wind = hidden_state[1]
-            affected_zone = "A" if wind == "N" else "B"
+            storm, wind, equip = hidden_state
+            storm_active = storm == 1
+            equip_active = equip > 0
+            storm_zone = self.cfg["wind_to_zone"][wind] if storm_active else None
+            equip_zone = self.cfg["equip_to_zone"][equip]
 
             # Track storm onsets
             if storm_active and not prev_storm:
                 storm_onsets.append({"onset_day": day, "detection_day": None})
             prev_storm = storm_active
 
-            # --- Prediction step (transition) ---
+            # Track equipment failure onsets
+            if equip_active and not prev_equip:
+                equip_onsets.append({"onset_day": day, "detection_day": None})
+            prev_equip = equip_active
+
+            # --- Prediction step ---
             if day > 1:
                 belief = self.pomdp.predict(belief)
 
-            # --- Compute oracle posterior (all available observations) ---
+            # --- Oracle posterior (all available observations) ---
             available_obs = step["available_observations"]
             oracle_posterior = self.pomdp.belief_update(belief, available_obs)
 
-            # --- Compute retrieved posterior (only observations the agent got) ---
+            # --- Retrieved posterior (agent's actual observations) ---
             retrieved_obs = step["observations"]
             retrieved_posterior = self.pomdp.belief_update(belief, retrieved_obs)
 
             # --- Oracle reward: best action under full oracle posterior ---
-            oracle_zone, oracle_boats, oracle_er = self.pomdp.optimal_action(oracle_posterior)
-            oracle_reward = self.pomdp.reward(hidden_state_idx, oracle_zone, oracle_boats)
+            oracle_alloc, oracle_er = self.pomdp.optimal_action(oracle_posterior)
+            oracle_reward = self.pomdp.reward(hidden_state_idx, oracle_alloc)
 
             # --- Retrieved oracle reward: best action under retrieved posterior ---
-            ret_zone, ret_boats, ret_er = self.pomdp.optimal_action(retrieved_posterior)
-            retrieved_oracle_reward = self.pomdp.reward(hidden_state_idx, ret_zone, ret_boats)
+            ret_alloc, ret_er = self.pomdp.optimal_action(retrieved_posterior)
+            retrieved_oracle_reward = self.pomdp.reward(hidden_state_idx, ret_alloc)
 
-            # --- Belief-optimal reward: best action under AGENT's stated beliefs ---
+            # --- Belief-optimal reward: best action under agent's stated beliefs ---
             agent_beliefs = step["beliefs"]
-            agent_p_storm = agent_beliefs.get("storm_active", 0.5)
-            agent_p_zone_a = agent_beliefs.get("zone_a_is_dangerous", 0.5)
-
-            # Convert agent beliefs to a 4-state belief vector
-            agent_belief_vec = self._agent_beliefs_to_vector(agent_p_storm, agent_p_zone_a)
-            belief_zone, belief_boats, belief_er = self.pomdp.optimal_action(agent_belief_vec)
-            belief_optimal_reward = self.pomdp.reward(hidden_state_idx, belief_zone, belief_boats)
+            agent_belief_vec = self._agent_beliefs_to_vector(agent_beliefs)
+            belief_alloc, belief_er = self.pomdp.optimal_action(agent_belief_vec)
+            belief_optimal_reward = self.pomdp.reward(hidden_state_idx, belief_alloc)
 
             # --- Actual reward ---
-            action = step["action"]
             actual_reward = step["reward"]
 
             # --- Cost decomposition ---
@@ -86,12 +86,37 @@ class Evaluator:
             inference_gap = retrieved_oracle_reward - belief_optimal_reward
             planning_gap = belief_optimal_reward - actual_reward
 
-            # --- Brier scores (against ground truth) ---
-            true_storm = 1.0 if storm_active else 0.0
-            true_zone_a = 1.0 if (storm_active and affected_zone == "A") else 0.0
+            # --- Brier scores ---
+            agent_p_storm = agent_beliefs.get("storm_active", 0.5)
+            agent_storm_zone_probs = agent_beliefs.get(
+                "storm_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}
+            )
+            agent_p_equip = agent_beliefs.get("equip_failure_active", 0.2)
+            agent_equip_zone_probs = agent_beliefs.get(
+                "equip_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}
+            )
 
+            # Storm active Brier
+            true_storm = 1.0 if storm_active else 0.0
             brier_storm = (agent_p_storm - true_storm) ** 2
-            brier_zone = (agent_p_zone_a - true_zone_a) ** 2
+
+            # Storm zone Brier (4-way, only meaningful if storm active)
+            brier_storm_zone = 0.0
+            for z in self.cfg["zones"]:
+                true_val = 1.0 if (storm_active and storm_zone == z) else 0.0
+                pred_val = agent_p_storm * agent_storm_zone_probs.get(z, 0.25)
+                brier_storm_zone += (pred_val - true_val) ** 2
+
+            # Equip active Brier
+            true_equip = 1.0 if equip_active else 0.0
+            brier_equip = (agent_p_equip - true_equip) ** 2
+
+            # Equip zone Brier (4-way)
+            brier_equip_zone = 0.0
+            for z in self.cfg["zones"]:
+                true_val = 1.0 if (equip_active and equip_zone == z) else 0.0
+                pred_val = agent_p_equip * agent_equip_zone_probs.get(z, 0.25)
+                brier_equip_zone += (pred_val - true_val) ** 2
 
             # --- Detection lag tracking ---
             if agent_p_storm > 0.5:
@@ -99,8 +124,12 @@ class Evaluator:
                     if onset["detection_day"] is None:
                         onset["detection_day"] = day
 
-            # --- Advance belief to retrieved posterior for next step ---
-            # The evaluator tracks belief based on what the agent actually observed
+            if agent_p_equip > 0.5:
+                for onset in equip_onsets:
+                    if onset["detection_day"] is None:
+                        onset["detection_day"] = day
+
+            # --- Advance belief ---
             belief = retrieved_posterior.copy()
 
             step_result = {
@@ -113,40 +142,47 @@ class Evaluator:
                 "inference_gap": inference_gap,
                 "planning_gap": planning_gap,
                 "brier_storm": brier_storm,
-                "brier_zone": brier_zone,
+                "brier_storm_zone": brier_storm_zone,
+                "brier_equip": brier_equip,
+                "brier_equip_zone": brier_equip_zone,
                 "bayesian_posterior": oracle_posterior.tolist(),
                 "retrieved_posterior": retrieved_posterior.tolist(),
-                "optimal_action_under_posterior": {
-                    "zone": oracle_zone, "boats": oracle_boats
-                },
+                "optimal_action_under_posterior": oracle_alloc,
                 "tools_used": step["tools_used"],
             }
             step_results.append(step_result)
 
         # --- Episode-level metrics ---
         total_reward = sum(s["actual_reward"] for s in step_results)
-        mean_brier_storm = np.mean([s["brier_storm"] for s in step_results])
-        mean_brier_zone = np.mean([s["brier_zone"] for s in step_results])
+        mean_brier_storm = float(np.mean([s["brier_storm"] for s in step_results]))
+        mean_brier_storm_zone = float(np.mean([s["brier_storm_zone"] for s in step_results]))
+        mean_brier_equip = float(np.mean([s["brier_equip"] for s in step_results]))
+        mean_brier_equip_zone = float(np.mean([s["brier_equip_zone"] for s in step_results]))
 
-        # Detection lag
-        detection_lags = []
+        # Storm detection lag
+        storm_lags = []
         for onset in storm_onsets:
             if onset["detection_day"] is not None:
-                lag = onset["detection_day"] - onset["onset_day"]
-                detection_lags.append(lag)
+                storm_lags.append(onset["detection_day"] - onset["onset_day"])
             else:
-                detection_lags.append(float("inf"))
-        mean_detection_lag = np.mean(detection_lags) if detection_lags else float("inf")
+                storm_lags.append(float("inf"))
+        mean_storm_detection_lag = float(np.mean(storm_lags)) if storm_lags else float("inf")
+
+        # Equip detection lag
+        equip_lags = []
+        for onset in equip_onsets:
+            if onset["detection_day"] is not None:
+                equip_lags.append(onset["detection_day"] - onset["onset_day"])
+            else:
+                equip_lags.append(float("inf"))
+        mean_equip_detection_lag = float(np.mean(equip_lags)) if equip_lags else float("inf")
 
         total_tool_use_gap = sum(s["tool_use_gap"] for s in step_results)
         total_inference_gap = sum(s["inference_gap"] for s in step_results)
         total_planning_gap = sum(s["planning_gap"] for s in step_results)
 
         # Tool usage counts
-        tool_counts = {"check_weather_reports": 0, "query_fishing_log": 0,
-                       "analyze_data": 0, "evaluate_options": 0,
-                       "forecast_scenario": 0, "read_barometer": 0,
-                       "read_buoy": 0}
+        tool_counts = {t: 0 for t in self.cfg["tool_budgets"]}
         for s in step_results:
             for tool in s["tools_used"]:
                 if tool in tool_counts:
@@ -162,49 +198,74 @@ class Evaluator:
         return {
             "step_results": step_results,
             "total_reward": total_reward,
-            "mean_brier_storm": float(mean_brier_storm),
-            "mean_brier_zone": float(mean_brier_zone),
-            "mean_detection_lag": float(mean_detection_lag),
+            "mean_brier_storm": mean_brier_storm,
+            "mean_brier_storm_zone": mean_brier_storm_zone,
+            "mean_brier_equip": mean_brier_equip,
+            "mean_brier_equip_zone": mean_brier_equip_zone,
+            "mean_storm_detection_lag": mean_storm_detection_lag,
+            "mean_equip_detection_lag": mean_equip_detection_lag,
+            "mean_detection_lag": mean_storm_detection_lag,  # backward compat alias
             "total_tool_use_gap": total_tool_use_gap,
             "total_inference_gap": total_inference_gap,
             "total_planning_gap": total_planning_gap,
             "tool_usage_counts": tool_counts,
             "reward_per_quarter": reward_per_quarter,
             "storm_onsets": storm_onsets,
+            "equip_onsets": equip_onsets,
         }
 
-    def _agent_beliefs_to_vector(self, p_storm, p_zone_a_dangerous):
+    def _agent_beliefs_to_vector(self, beliefs):
         """
-        Convert agent's 2-value belief to a 4-state belief vector.
+        Convert agent's 10-marginal belief dict to a 40-element belief vector
+        under independence assumption.
 
-        p_storm = P(storm=1) = belief[2] + belief[3]
-        p_zone_a_dangerous = P(storm=1 AND wind=N) = belief[2]
-
-        So:
-          belief[2] = p_zone_a_dangerous
-          belief[3] = p_storm - p_zone_a_dangerous
-          Remaining (1 - p_storm) split: we need P(wind=N | no storm)
-
-        Since we don't know the agent's wind prior, we split no-storm
-        proportionally to maintain consistency.
+        beliefs = {
+            "storm_active": float,
+            "storm_zone_probs": {"A": f, "B": f, "C": f, "D": f},
+            "equip_failure_active": float,
+            "equip_zone_probs": {"A": f, "B": f, "C": f, "D": f},
+        }
         """
-        p_storm = max(0.0, min(1.0, p_storm))
-        p_zone_a_dangerous = max(0.0, min(p_storm, p_zone_a_dangerous))
+        p_storm = max(0.0, min(1.0, beliefs.get("storm_active", 0.5)))
+        storm_zone_probs = beliefs.get(
+            "storm_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}
+        )
+        p_equip = max(0.0, min(1.0, beliefs.get("equip_failure_active", 0.2)))
+        equip_zone_probs = beliefs.get(
+            "equip_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}
+        )
 
-        b2 = p_zone_a_dangerous                    # P(storm=1, wind=N)
-        b3 = p_storm - p_zone_a_dangerous           # P(storm=1, wind=S)
-        p_no_storm = 1.0 - p_storm
+        # Normalize zone probs
+        szp_sum = sum(storm_zone_probs.get(z, 0.25) for z in self.cfg["zones"])
+        ezp_sum = sum(equip_zone_probs.get(z, 0.25) for z in self.cfg["zones"])
 
-        # Split no-storm proportionally to wind ratio from storm beliefs
-        if p_storm > 0:
-            wind_n_ratio = p_zone_a_dangerous / p_storm
-        else:
-            wind_n_ratio = 0.5
-        b0 = p_no_storm * wind_n_ratio              # P(storm=0, wind=N)
-        b1 = p_no_storm * (1.0 - wind_n_ratio)      # P(storm=0, wind=S)
+        belief = np.zeros(self.pomdp.n_states, dtype=np.float64)
+        for i, (storm, wind, equip) in enumerate(self.cfg["states"]):
+            # Storm component
+            p_s = p_storm if storm == 1 else (1.0 - p_storm)
 
-        belief = np.array([b0, b1, b2, b3], dtype=np.float64)
+            # Wind component (conditional on storm_zone_probs)
+            zone_for_wind = self.cfg["wind_to_zone"][wind]
+            if szp_sum > 0:
+                p_w = storm_zone_probs.get(zone_for_wind, 0.25) / szp_sum
+            else:
+                p_w = 0.25
+
+            # Equipment component
+            if equip == 0:
+                p_e = 1.0 - p_equip
+            else:
+                equip_zone = self.cfg["equip_to_zone"][equip]
+                if ezp_sum > 0:
+                    p_e = p_equip * (equip_zone_probs.get(equip_zone, 0.25) / ezp_sum)
+                else:
+                    p_e = p_equip * 0.25
+
+            belief[i] = p_s * p_w * p_e
+
         total = belief.sum()
         if total > 0:
             belief /= total
+        else:
+            belief = np.ones(self.pomdp.n_states, dtype=np.float64) / self.pomdp.n_states
         return belief

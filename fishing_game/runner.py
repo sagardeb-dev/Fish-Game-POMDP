@@ -1,8 +1,9 @@
 """
-Ablation runner for the Fishing Game.
+Ablation runner for the Fishing Game v4 — Discoverable causal structure.
 
-6 ablation configs × 5 baselines × 5 seeds = 150 episodes.
-Prints comparison table. Verifies baseline ordering and decomposition identity.
+3 ablation configs x 4 baselines x 5 seeds = 60 episodes.
+Prints comparison table. Verifies baseline ordering, decomposition identity,
+and tool_use_gap behavior (positive for non-SQL agents, ~0 for SQL agents).
 """
 
 import random as stdlib_random
@@ -10,50 +11,35 @@ from fishing_game.config import CONFIG
 from fishing_game.simulator import FishingGameEnv
 from fishing_game.evaluator import Evaluator
 from fishing_game.baselines import (
-    RandomAgent, NoToolsHeuristic, SearchOnlyHeuristic,
-    BeliefAwareBaseline, OracleAgent,
+    RandomAgent, NaivePatternMatcher,
+    CausalReasoner, OracleAgent,
 )
 
 
 # --- Ablation configurations ---
+# In v3, raw sensors are always free. These only control budget-gated tools.
 ABLATION_CONFIGS = {
     "full": {
-        "check_weather_reports": True, "query_fishing_log": True,
-        "analyze_data": True, "evaluate_options": True,
-        "forecast_scenario": True, "read_barometer": True, "read_buoy": True,
+        "check_weather_reports": True, "check_equipment_reports": True,
+        "query_fishing_log": True, "query_maintenance_log": True,
+        "analyze_data": True, "evaluate_options": True, "forecast_scenario": True,
     },
     "no_search": {
-        "check_weather_reports": False, "query_fishing_log": True,
-        "analyze_data": True, "evaluate_options": True,
-        "forecast_scenario": True, "read_barometer": True, "read_buoy": True,
-    },
-    "search_only": {
-        "check_weather_reports": True, "query_fishing_log": False,
-        "analyze_data": False, "evaluate_options": False,
-        "forecast_scenario": False, "read_barometer": False, "read_buoy": False,
-    },
-    "no_optimizer": {
-        "check_weather_reports": True, "query_fishing_log": True,
-        "analyze_data": True, "evaluate_options": False,
-        "forecast_scenario": True, "read_barometer": True, "read_buoy": True,
-    },
-    "no_whatif": {
-        "check_weather_reports": True, "query_fishing_log": True,
-        "analyze_data": True, "evaluate_options": True,
-        "forecast_scenario": False, "read_barometer": True, "read_buoy": True,
+        "check_weather_reports": False, "check_equipment_reports": False,
+        "query_fishing_log": False, "query_maintenance_log": False,
+        "analyze_data": True, "evaluate_options": True, "forecast_scenario": True,
     },
     "no_tools": {
-        "check_weather_reports": False, "query_fishing_log": False,
-        "analyze_data": False, "evaluate_options": False,
-        "forecast_scenario": False, "read_barometer": False, "read_buoy": False,
+        "check_weather_reports": False, "check_equipment_reports": False,
+        "query_fishing_log": False, "query_maintenance_log": False,
+        "analyze_data": False, "evaluate_options": False, "forecast_scenario": False,
     },
 }
 
 BASELINES = [
     ("Random", RandomAgent),
-    ("NoTools", NoToolsHeuristic),
-    ("SearchOnly", SearchOnlyHeuristic),
-    ("BeliefAware", BeliefAwareBaseline),
+    ("NaivePattern", NaivePatternMatcher),
+    ("CausalReasoner", CausalReasoner),
     ("Oracle", OracleAgent),
 ]
 
@@ -87,10 +73,7 @@ def run_episode(agent_cls, seed, config=None, ablation=None):
 
 
 def run_ablation_suite(seeds=None, config=None, verify=True):
-    """
-    Run all baselines × all ablation configs × all seeds.
-    Returns nested dict: results[config_name][agent_name] = {metrics...}
-    """
+    """Run all baselines x all ablation configs x all seeds."""
     seeds = seeds or DEFAULT_SEEDS
     cfg = config or CONFIG
     results = {}
@@ -101,7 +84,7 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
         for agent_name, agent_cls in BASELINES:
             rewards = []
             brier_storms = []
-            brier_zones = []
+            brier_equips = []
             detection_lags = []
             tool_gaps = []
             inference_gaps = []
@@ -114,7 +97,7 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
 
                 rewards.append(eval_result["total_reward"])
                 brier_storms.append(eval_result["mean_brier_storm"])
-                brier_zones.append(eval_result["mean_brier_zone"])
+                brier_equips.append(eval_result["mean_brier_equip"])
                 detection_lags.append(eval_result["mean_detection_lag"])
                 tool_gaps.append(eval_result["total_tool_use_gap"])
                 inference_gaps.append(eval_result["total_inference_gap"])
@@ -136,7 +119,7 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
                 "reward_mean": np.mean(rewards),
                 "reward_std": np.std(rewards),
                 "brier_storm": np.mean(brier_storms),
-                "brier_zone": np.mean(brier_zones),
+                "brier_equip": np.mean(brier_equips),
                 "detection_lag": np.mean(detection_lags),
                 "tool_gap": np.mean(tool_gaps),
                 "inference_gap": np.mean(inference_gaps),
@@ -149,8 +132,8 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
 def print_comparison_table(results):
     """Print the full comparison table."""
     header = (
-        f"{'Config':<14} {'Agent':<14} {'Reward':>10} "
-        f"{'Brier(S)':>9} {'Brier(Z)':>9} {'Det.Lag':>8} "
+        f"{'Config':<14} {'Agent':<16} {'Reward':>10} "
+        f"{'Brier(S)':>9} {'Brier(E)':>9} {'Det.Lag':>8} "
         f"{'ToolGap':>9} {'InfGap':>9} {'PlanGap':>9}"
     )
     separator = "-" * len(header)
@@ -164,9 +147,9 @@ def print_comparison_table(results):
             m = results[config_name][agent_name]
             det_lag = f"{m['detection_lag']:.1f}" if m["detection_lag"] != float("inf") else "inf"
             print(
-                f"{config_name:<14} {agent_name:<14} "
-                f"{m['reward_mean']:>7.1f}±{m['reward_std']:>4.1f} "
-                f"{m['brier_storm']:>9.4f} {m['brier_zone']:>9.4f} "
+                f"{config_name:<14} {agent_name:<16} "
+                f"{m['reward_mean']:>7.1f}+{m['reward_std']:>4.1f} "
+                f"{m['brier_storm']:>9.4f} {m['brier_equip']:>9.4f} "
                 f"{det_lag:>8} "
                 f"{m['tool_gap']:>9.1f} {m['inference_gap']:>9.1f} "
                 f"{m['planning_gap']:>9.1f}"
@@ -175,19 +158,59 @@ def print_comparison_table(results):
 
 
 def verify_ordering(results):
-    """Verify baseline ordering holds under every ablation config."""
+    """Verify baseline ordering holds under every ablation config.
+
+    Random < NaivePatternMatcher < CausalReasoner <= Oracle.
+    CausalReasoner can match Oracle when sensors are clean enough for
+    full Bayesian inference to reconstruct the hidden state.
+    """
     agent_names = [name for name, _ in BASELINES]
     all_ok = True
 
     for config_name in ABLATION_CONFIGS:
         rewards = [results[config_name][name]["reward_mean"] for name in agent_names]
         for i in range(len(rewards) - 1):
-            if rewards[i] >= rewards[i + 1]:
-                print(
-                    f"ORDERING VIOLATION in {config_name}: "
-                    f"{agent_names[i]} ({rewards[i]:.1f}) >= "
-                    f"{agent_names[i+1]} ({rewards[i+1]:.1f})"
-                )
+            # Allow CausalReasoner == Oracle (last pair)
+            if i == len(rewards) - 2:
+                if rewards[i] > rewards[i + 1]:
+                    print(
+                        f"ORDERING VIOLATION in {config_name}: "
+                        f"{agent_names[i]} ({rewards[i]:.1f}) > "
+                        f"{agent_names[i+1]} ({rewards[i+1]:.1f})"
+                    )
+                    all_ok = False
+            else:
+                if rewards[i] >= rewards[i + 1]:
+                    print(
+                        f"ORDERING VIOLATION in {config_name}: "
+                        f"{agent_names[i]} ({rewards[i]:.1f}) >= "
+                        f"{agent_names[i+1]} ({rewards[i+1]:.1f})"
+                    )
+                    all_ok = False
+
+    return all_ok
+
+
+def verify_tool_use_gaps(results):
+    """Verify that NaivePatternMatcher/Random have positive tool_use_gap
+    and CausalReasoner/Oracle have ~0 tool_use_gap in 'full' config."""
+    all_ok = True
+    full = results.get("full", {})
+
+    # Agents that don't use SQL should have positive tool_use_gap
+    for name in ["Random", "NaivePattern"]:
+        if name in full:
+            gap = full[name]["tool_gap"]
+            if gap <= 0:
+                print(f"TOOL_GAP VIOLATION: {name} tool_gap={gap:.1f} should be > 0")
+                all_ok = False
+
+    # Agents that use SQL should have ~0 tool_use_gap
+    for name in ["CausalReasoner", "Oracle"]:
+        if name in full:
+            gap = full[name]["tool_gap"]
+            if abs(gap) > 1.0:
+                print(f"TOOL_GAP VIOLATION: {name} tool_gap={gap:.1f} should be ~0")
                 all_ok = False
 
     return all_ok
@@ -195,7 +218,7 @@ def verify_ordering(results):
 
 def main():
     """Run the full ablation suite and print results."""
-    print("Running ablation suite: 6 configs × 5 baselines × 5 seeds = 150 episodes")
+    print("Running ablation suite: 3 configs x 4 baselines x 5 seeds = 60 episodes")
     print("=" * 80)
 
     results, decomposition_ok = run_ablation_suite()
@@ -208,7 +231,11 @@ def main():
     ordering_ok = verify_ordering(results)
     print(f"  Baseline ordering:      {'PASS' if ordering_ok else 'FAIL'}")
 
-    if decomposition_ok and ordering_ok:
+    tool_gap_ok = verify_tool_use_gaps(results)
+    print(f"  Tool use gaps:          {'PASS' if tool_gap_ok else 'FAIL'}")
+
+    all_ok = decomposition_ok and ordering_ok and tool_gap_ok
+    if all_ok:
         print("\nAll verifications PASSED.")
     else:
         print("\nSome verifications FAILED. See above for details.")

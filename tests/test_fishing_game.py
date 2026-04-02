@@ -1104,3 +1104,145 @@ class TestAblationRunner:
                 assert rewards[i] < rewards[i + 1], (
                     f"full: {agent_names[i]} ({rewards[i]:.1f}) >= {agent_names[i+1]} ({rewards[i+1]:.1f})"
                 )
+
+
+# =============================================================================
+# LLM+Solver Tests
+# =============================================================================
+
+from fishing_game.llm_solver_agent import (
+    LLMSolverAgent, MockLLMSolverAgent,
+    _parse_config_patch, _deep_merge,
+)
+
+
+def _run_llm_solver(agent, seed, config=None):
+    """Helper: run an LLMSolverAgent for a full episode."""
+    import random as stdlib_random
+    cfg = config or CONFIG
+    env = FishingGameEnv(config=cfg)
+    obs = env.reset(seed=seed)
+    agent.reset()
+    rng = stdlib_random.Random(seed + 1000)
+    total_reward = 0.0
+    for _ in range(cfg["episode_length"]):
+        result = agent.act(env, obs, rng=rng)
+        total_reward += result["reward"]
+        if result["done"]:
+            break
+        obs = result["observation"]
+    return total_reward, env.get_trace()
+
+
+class TestLLMSolver:
+
+    def test_llm_solver_runs(self):
+        """MockLLMSolverAgent completes a full 20-day episode."""
+        agent = MockLLMSolverAgent(config=CONFIG)
+        reward, trace = _run_llm_solver(agent, seed=42)
+        assert len(trace) == 20
+
+    def test_llm_solver_uses_sql(self):
+        """LLM+Solver should use SQL tools (for data queries + Tier 2 promotion)."""
+        agent = MockLLMSolverAgent(config=CONFIG)
+        reward, trace = _run_llm_solver(agent, seed=42)
+        all_tools = []
+        for step in trace:
+            all_tools.extend(step.get("tools_used", []))
+        sql_tools = {"query_fishing_log", "query_maintenance_log"}
+        assert sql_tools & set(all_tools), (
+            f"LLM+Solver should use SQL tools, but used: {set(all_tools)}"
+        )
+
+    def test_llm_solver_invalid_json_fallback(self):
+        """LLM returns garbage → agent falls back to defaults, episode completes."""
+        def bad_llm(messages):
+            return "I don't understand the question. Here's a poem about fish."
+
+        agent = LLMSolverAgent(llm_fn=bad_llm, config=CONFIG)
+        reward, trace = _run_llm_solver(agent, seed=42)
+        assert len(trace) == 20
+        assert agent._parsed_config_patch == {}
+
+    def test_llm_solver_partial_json_fallback(self):
+        """LLM returns JSON missing some fields → defaults used for missing."""
+        def partial_llm(messages):
+            return json.dumps({
+                "buoy_params": {
+                    "normal": {"mean": 1.5, "std": 0.6},
+                    "source": {"mean": 3.5, "std": 0.8},
+                    "propagated": {"mean": 2.5, "std": 0.7},
+                    "far_propagated": {"mean": 1.8, "std": 0.6},
+                },
+                # Missing: equipment, maintenance, water_temp, transitions
+            })
+
+        agent = LLMSolverAgent(llm_fn=partial_llm, config=CONFIG)
+        reward, trace = _run_llm_solver(agent, seed=42)
+        assert len(trace) == 20
+        assert "buoy_params" in agent._parsed_config_patch
+        assert "equipment_inspection_params" not in agent._parsed_config_patch
+
+    def test_llm_solver_true_patch_matches_causal_reasoner(self):
+        """Feed true CONFIG values as patch → should match CausalReasoner rewards."""
+        # Build a patch equal to the true config values
+        true_patch = {
+            "buoy_params": CONFIG["buoy_params"],
+            "equipment_inspection_params": CONFIG["equipment_inspection_params"],
+            "equipment_age_offset_factor": CONFIG["equipment_age_offset_factor"],
+            "maintenance_alert_params": CONFIG["maintenance_alert_params"],
+            "water_temp_params": CONFIG["water_temp_params"],
+            "zone_temp_offset": CONFIG["zone_temp_offset"],
+            "storm_transition": CONFIG["storm_transition"],
+            "wind_transition": CONFIG["wind_transition"],
+            "equip_transition": CONFIG["equip_transition"],
+            "tide_transition": CONFIG["tide_transition"],
+        }
+
+        solver_agent = MockLLMSolverAgent(config=CONFIG, patch=true_patch)
+        solver_reward, _ = _run_llm_solver(solver_agent, seed=42)
+
+        reasoner_reward, _ = _run_baseline(CausalReasoner, seed=42)
+
+        assert solver_reward == reasoner_reward, (
+            f"LLM+Solver with true params ({solver_reward}) != "
+            f"CausalReasoner ({reasoner_reward})"
+        )
+
+    def test_parse_config_patch_valid(self):
+        """Valid JSON patch is parsed correctly."""
+        text = '```json\n{"buoy_params": {"normal": {"mean": 1.5, "std": 0.6}, "source": {"mean": 3.5, "std": 0.8}, "propagated": {"mean": 2.5, "std": 0.7}, "far_propagated": {"mean": 1.8, "std": 0.6}}}\n```'
+        patch = _parse_config_patch(text)
+        assert "buoy_params" in patch
+        assert patch["buoy_params"]["source"]["mean"] == 3.5
+
+    def test_parse_config_patch_std_floor(self):
+        """Std values below 0.3 are clamped."""
+        text = json.dumps({
+            "buoy_params": {
+                "normal": {"mean": 1.5, "std": 0.1},
+                "source": {"mean": 3.5, "std": 0.05},
+                "propagated": {"mean": 2.5, "std": 0.7},
+                "far_propagated": {"mean": 1.8, "std": 0.6},
+            }
+        })
+        patch = _parse_config_patch(text)
+        assert patch["buoy_params"]["normal"]["std"] == 0.3
+        assert patch["buoy_params"]["source"]["std"] == 0.3
+
+    def test_deep_merge_nested(self):
+        """Deep merge correctly handles nested dicts."""
+        base = {"a": {"b": 1, "c": 2}, "d": 3}
+        patch = {"a": {"b": 10}, "d": 30}
+        result = _deep_merge(base, patch)
+        assert result["a"]["b"] == 10
+        assert result["a"]["c"] == 2  # preserved
+        assert result["d"] == 30
+
+    def test_deep_merge_ignores_unknown_keys(self):
+        """Deep merge ignores keys not in base."""
+        base = {"a": 1}
+        patch = {"a": 2, "z": 99}
+        result = _deep_merge(base, patch)
+        assert result["a"] == 2
+        assert "z" not in result

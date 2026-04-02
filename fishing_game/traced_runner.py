@@ -302,6 +302,60 @@ def _safe_parse_json(s):
         return s
 
 
+def run_llm_solver_episode(agent, seed=42, config=None, save_path=None):
+    """Run a full episode with an LLMSolverAgent. Prints CLI output inline."""
+    import time
+    cfg = config or CONFIG
+    env = FishingGameEnv(config=cfg)
+    obs = env.reset(seed=seed)
+    agent.reset()
+
+    import random as stdlib_random
+    rng = stdlib_random.Random(seed + 1000)
+    total_reward = 0.0
+
+    for day_idx in range(cfg["episode_length"]):
+        t0 = time.time()
+        result = agent.act(env, obs, rng=rng)
+        elapsed = time.time() - t0
+        total_reward += result["reward"]
+        if day_idx == 0:
+            print(f"  (LLM call took {elapsed:.1f}s)", flush=True)
+        if result["done"]:
+            break
+        obs = result["observation"]
+
+    trace = env.get_trace()
+    evaluator = Evaluator(config=cfg)
+    eval_result = evaluator.evaluate_episode(trace)
+
+    print(f"\n{'='*60}")
+    print(f"EPISODE SUMMARY (seed={seed})")
+    print(f"{'='*60}")
+    print(f"  Total reward:   {eval_result['total_reward']}")
+    print(f"  Brier (storm):  {eval_result['mean_brier_storm']:.4f}")
+    print(f"  Brier (equip):  {eval_result['mean_brier_equip']:.4f}")
+    print(f"  Tool use gap:   {eval_result['total_tool_use_gap']:.1f}")
+    print(f"  Inference gap:  {eval_result['total_inference_gap']:.1f}")
+    print(f"  Planning gap:   {eval_result['total_planning_gap']:.1f}")
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+        output = {
+            "metadata": {"seed": seed, "agent": "LLMSolverAgent",
+                         "timestamp": datetime.now().isoformat()},
+            "llm_response": agent._raw_model_response,
+            "parsed_patch": agent._parsed_config_patch,
+            "evaluation": {k: v for k, v in eval_result.items() if k != "step_results"},
+            "step_results": eval_result["step_results"],
+        }
+        with open(save_path, "w") as f:
+            json.dump(output, f, indent=2, default=str)
+        print(f"\nTrace saved to {save_path}")
+
+    return eval_result
+
+
 if __name__ == "__main__":
     output = run_traced_episode(
         seed=42,

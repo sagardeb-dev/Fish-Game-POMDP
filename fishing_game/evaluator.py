@@ -1,5 +1,5 @@
 """
-Evaluator for the Fishing Game POMDP v2.
+Evaluator for the Fishing Game POMDP v5.
 
 Takes POMDP model + episode trace. Computes Bayesian posterior at each step,
 Brier scores (storm, storm_zone, equip, equip_zone), detection lags for both
@@ -36,7 +36,7 @@ class Evaluator:
             day = step["day"]
             hidden_state_idx = step["hidden_state_idx"]
             hidden_state = step["hidden_state"]
-            storm, wind, equip = hidden_state
+            storm, wind, equip, tide = hidden_state
             storm_active = storm == 1
             equip_active = equip > 0
             storm_zone = self.cfg["wind_to_zone"][wind] if storm_active else None
@@ -216,7 +216,7 @@ class Evaluator:
 
     def _agent_beliefs_to_vector(self, beliefs):
         """
-        Convert agent's 10-marginal belief dict to a 40-element belief vector
+        Convert agent's marginal belief dict to an 80-element belief vector
         under independence assumption.
 
         beliefs = {
@@ -224,6 +224,7 @@ class Evaluator:
             "storm_zone_probs": {"A": f, "B": f, "C": f, "D": f},
             "equip_failure_active": float,
             "equip_zone_probs": {"A": f, "B": f, "C": f, "D": f},
+            "tide_high": float (optional, defaults to 0.5),
         }
         """
         p_storm = max(0.0, min(1.0, beliefs.get("storm_active", 0.5)))
@@ -234,13 +235,14 @@ class Evaluator:
         equip_zone_probs = beliefs.get(
             "equip_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}
         )
+        p_tide_high = max(0.0, min(1.0, beliefs.get("tide_high", 0.5)))
 
         # Normalize zone probs
         szp_sum = sum(storm_zone_probs.get(z, 0.25) for z in self.cfg["zones"])
         ezp_sum = sum(equip_zone_probs.get(z, 0.25) for z in self.cfg["zones"])
 
         belief = np.zeros(self.pomdp.n_states, dtype=np.float64)
-        for i, (storm, wind, equip) in enumerate(self.cfg["states"]):
+        for i, (storm, wind, equip, tide) in enumerate(self.cfg["states"]):
             # Storm component
             p_s = p_storm if storm == 1 else (1.0 - p_storm)
 
@@ -261,7 +263,10 @@ class Evaluator:
                 else:
                     p_e = p_equip * 0.25
 
-            belief[i] = p_s * p_w * p_e
+            # Tide component
+            p_t = p_tide_high if tide == 1 else (1.0 - p_tide_high)
+
+            belief[i] = p_s * p_w * p_e * p_t
 
         total = belief.sum()
         if total > 0:

@@ -1,7 +1,7 @@
 """
-Ablation runner for the Fishing Game v4 — Discoverable causal structure.
+Ablation runner for the Fishing Game v5 — Discoverable causal structure.
 
-3 ablation configs x 4 baselines x 5 seeds = 60 episodes.
+3 ablation configs x 5 baselines x 10 seeds = 150 episodes.
 Prints comparison table. Verifies baseline ordering, decomposition identity,
 and tool_use_gap behavior (positive for non-SQL agents, ~0 for SQL agents).
 """
@@ -11,7 +11,7 @@ from fishing_game.config import CONFIG
 from fishing_game.simulator import FishingGameEnv
 from fishing_game.evaluator import Evaluator
 from fishing_game.baselines import (
-    RandomAgent, NaivePatternMatcher,
+    RandomAgent, NaivePatternMatcher, CausalLearner,
     CausalReasoner, OracleAgent,
 )
 
@@ -39,11 +39,12 @@ ABLATION_CONFIGS = {
 BASELINES = [
     ("Random", RandomAgent),
     ("NaivePattern", NaivePatternMatcher),
+    ("CausalLearner", CausalLearner),
     ("CausalReasoner", CausalReasoner),
     ("Oracle", OracleAgent),
 ]
 
-DEFAULT_SEEDS = [42, 123, 456, 789, 1024]
+DEFAULT_SEEDS = [42, 123, 456, 789, 1024, 2048, 3000, 4096, 5555, 7777]
 
 
 def run_episode(agent_cls, seed, config=None, ablation=None):
@@ -79,6 +80,9 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
     results = {}
     all_pass = True
 
+    total_episodes = len(ABLATION_CONFIGS) * len(BASELINES) * len(seeds)
+    episode_num = 0
+
     for config_name, ablation in ABLATION_CONFIGS.items():
         results[config_name] = {}
         for agent_name, agent_cls in BASELINES:
@@ -91,8 +95,15 @@ def run_ablation_suite(seeds=None, config=None, verify=True):
             planning_gaps = []
 
             for seed in seeds:
+                episode_num += 1
                 total_reward, trace, eval_result = run_episode(
                     agent_cls, seed, config=cfg, ablation=ablation,
+                )
+                print(
+                    f"  [{episode_num:>3}/{total_episodes}] "
+                    f"{config_name:<14} {agent_name:<16} seed={seed:<5} "
+                    f"reward={eval_result['total_reward']:>8.1f}",
+                    flush=True,
                 )
 
                 rewards.append(eval_result["total_reward"])
@@ -160,18 +171,21 @@ def print_comparison_table(results):
 def verify_ordering(results):
     """Verify baseline ordering holds under every ablation config.
 
-    Random < NaivePatternMatcher < CausalReasoner <= Oracle.
-    CausalReasoner can match Oracle when sensors are clean enough for
-    full Bayesian inference to reconstruct the hidden state.
+    Random < NaivePattern < CausalLearner <= CausalReasoner <= Oracle.
+    CausalLearner can match CausalReasoner on easy configs.
+    CausalReasoner can match Oracle when sensors are clean enough.
     """
     agent_names = [name for name, _ in BASELINES]
+    # Pairs that allow equality: CausalLearner<=CausalReasoner, CausalReasoner<=Oracle
+    allow_equal = {(agent_names[-3], agent_names[-2]),
+                   (agent_names[-2], agent_names[-1])}
     all_ok = True
 
     for config_name in ABLATION_CONFIGS:
         rewards = [results[config_name][name]["reward_mean"] for name in agent_names]
         for i in range(len(rewards) - 1):
-            # Allow CausalReasoner == Oracle (last pair)
-            if i == len(rewards) - 2:
+            pair = (agent_names[i], agent_names[i + 1])
+            if pair in allow_equal:
                 if rewards[i] > rewards[i + 1]:
                     print(
                         f"ORDERING VIOLATION in {config_name}: "
@@ -206,7 +220,7 @@ def verify_tool_use_gaps(results):
                 all_ok = False
 
     # Agents that use SQL should have ~0 tool_use_gap
-    for name in ["CausalReasoner", "Oracle"]:
+    for name in ["CausalLearner", "CausalReasoner", "Oracle"]:
         if name in full:
             gap = full[name]["tool_gap"]
             if abs(gap) > 1.0:
@@ -218,7 +232,7 @@ def verify_tool_use_gaps(results):
 
 def main():
     """Run the full ablation suite and print results."""
-    print("Running ablation suite: 3 configs x 4 baselines x 5 seeds = 60 episodes")
+    print(f"Running ablation suite: 3 configs x 5 baselines x 10 seeds = 150 episodes")
     print("=" * 80)
 
     results, decomposition_ok = run_ablation_suite()

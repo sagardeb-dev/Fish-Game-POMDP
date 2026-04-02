@@ -1,10 +1,11 @@
 """
-LLM Agent adapter for the Fishing Game v4 — Discoverable causal structure.
+LLM Agent adapter for the Fishing Game v5 — Labels removed + tide/water temp.
 
-Bridges any tool-calling LLM to the FishingGameEnv v4.
+Bridges any tool-calling LLM to the FishingGameEnv v5.
 The LLM sees the observation bundle, the tool schemas, and must end each
 turn by calling submit_decisions. Causal structure must be discovered
 through historical database analysis, not explained in the prompt.
+daily_conditions table is hidden — no ground truth labels available.
 """
 
 import json
@@ -75,11 +76,10 @@ TOOL_SCHEMAS = [
             "name": "query_fishing_log",
             "description": (
                 "Run a read-only SQL query against your fishing database. "
-                "Available tables: daily_log, weather_signals, daily_conditions, "
+                "Available tables: daily_log, weather_signals, "
                 "catch_history, maintenance_log, sensor_log. "
-                "daily_conditions (day, storm_active, storm_zone, equip_zone, barometer, sea_color) "
-                "has one row per day with labeled outcomes — JOIN to sensor_log on day. "
-                "sensor_log (day, zone, buoy_reading, equipment_reading) has per-zone readings. "
+                "sensor_log (day, zone, buoy_reading, equipment_reading, water_temp) has per-zone readings. "
+                "catch_history (day, zone, boats, reward) has historical catch outcomes. "
                 "Only SELECT/WITH allowed. Budget: 2 calls per day."
             ),
             "parameters": {
@@ -173,6 +173,10 @@ TOOL_SCHEMAS = [
                             "C": {"type": "number"}, "D": {"type": "number"},
                         },
                     },
+                    "tide_high": {
+                        "type": "number",
+                        "description": "Probability that tide is high (0.0 to 1.0)",
+                    },
                 },
                 "required": ["storm_active"],
             },
@@ -212,6 +216,10 @@ TOOL_SCHEMAS = [
                         "enum": ["A", "B", "C", "D"],
                         "description": "Which zone has equipment failure",
                     },
+                    "assume_tide_high": {
+                        "type": "boolean",
+                        "description": "Whether to assume high tide",
+                    },
                     "strategy": {
                         "type": "object",
                         "description": "Boat allocation to simulate",
@@ -239,12 +247,12 @@ TOOL_SCHEMAS = [
                 "properties": {
                     "allocation": {
                         "type": "object",
-                        "description": "Boats per zone, e.g. {\"A\": 2, \"B\": 1, \"C\": 0, \"D\": 0}. Total must be 1-3.",
+                        "description": "Boats per zone, e.g. {\"A\": 5, \"B\": 3, \"C\": 2, \"D\": 0}. Total must be 1-10.",
                         "properties": {
-                            "A": {"type": "integer", "minimum": 0},
-                            "B": {"type": "integer", "minimum": 0},
-                            "C": {"type": "integer", "minimum": 0},
-                            "D": {"type": "integer", "minimum": 0},
+                            "A": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "B": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "C": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "D": {"type": "integer", "minimum": 0, "maximum": 10},
                         },
                     },
                     "storm_active": {
@@ -271,6 +279,10 @@ TOOL_SCHEMAS = [
                             "C": {"type": "number"}, "D": {"type": "number"},
                         },
                     },
+                    "tide_high": {
+                        "type": "number",
+                        "description": "Probability that tide is high (0.0 to 1.0)",
+                    },
                     "reasoning": {
                         "type": "string",
                         "description": "Brief explanation of your decision",
@@ -291,8 +303,10 @@ Each day, TWO independent hidden risks may be active:
 1. **Storm**: A hidden storm may be active, hitting ONE of the four zones.
 2. **Equipment failure**: Fishing equipment in ONE zone may be broken, causing losses.
 
+Additionally, **tide** (high or low) affects fishing conditions but is not directly observable.
+
 ## Rewards (per boat, per zone)
-- Zone is SAFE (no risks): +7 base
+- Zone is SAFE (no risks): +7 base (+ possible tide bonus)
 - Zone has STORM only: -18
 - Zone has EQUIPMENT FAILURE only: -10
 - Zone has BOTH storm AND equipment failure: -25
@@ -305,11 +319,12 @@ You receive the following automatically:
 - **Buoy readings** (4 zones, meters)
 - **Equipment readings** (4 zones, score)
 - **Maintenance alerts** (4 zones, count)
+- **Water temperature** (4 zones, degrees C)
 - **Zone infrastructure ages**: A=25yr, B=15yr, C=5yr, D=2yr (constant)
 
 **Important**: Sensor readings may be correlated or confounded. Investigate historical
 patterns in the database to understand how readings relate to actual conditions.
-The historical database contains 30 days of pre-season data with labeled outcomes.
+The historical database contains 30 days of pre-season sensor and catch data.
 
 ## Budget-gated tools
 - **check_weather_reports**: Search weather intelligence (budget: 2/day)
@@ -321,7 +336,7 @@ The historical database contains 30 days of pre-season data with labeled outcome
 - **forecast_scenario**: Project multi-day scenarios (budget: 1/day)
 
 ## Boat allocation
-Each day, allocate 1-3 boats across the 4 zones. Example: {"A": 2, "B": 1, "C": 0, "D": 0}
+Each day, allocate 1-10 boats across the 4 zones. Example: {"A": 5, "B": 3, "C": 2, "D": 0}
 
 ## Required output
 Every turn MUST end with submit_decisions including your beliefs:
@@ -329,6 +344,7 @@ Every turn MUST end with submit_decisions including your beliefs:
 - storm_zone_probs: {"A": p, "B": p, "C": p, "D": p} summing to 1
 - equip_failure_active: P(equipment is broken somewhere)
 - equip_zone_probs: {"A": p, "B": p, "C": p, "D": p} summing to 1
+- tide_high: P(tide is high) (optional)
 """
 
 
@@ -348,11 +364,13 @@ def format_observation_message(obs):
     equip = obs.get("equipment_readings", {})
     maint = obs.get("maintenance_alerts", {})
     ages = obs.get("zone_infrastructure_ages", {})
+    water_temps = obs.get("water_temp_readings", {})
 
     buoy_str = ", ".join(f"{z}={buoys.get(z, '?')}m" for z in ["A", "B", "C", "D"])
     equip_str = ", ".join(f"{z}={equip.get(z, '?')}" for z in ["A", "B", "C", "D"])
     maint_str = ", ".join(f"{z}={maint.get(z, '?')}" for z in ["A", "B", "C", "D"])
     age_str = ", ".join(f"{z}={ages.get(z, '?')}yr" for z in ["A", "B", "C", "D"])
+    wtemp_str = ", ".join(f"{z}={water_temps.get(z, '?')}C" for z in ["A", "B", "C", "D"])
 
     return (
         f"=== DAY {obs['day']} ({obs['days_remaining']} days remaining) ===\n"
@@ -362,6 +380,7 @@ def format_observation_message(obs):
         f"Buoy readings: {buoy_str}\n"
         f"Equipment readings: {equip_str}\n"
         f"Maintenance alerts: {maint_str}\n"
+        f"Water temperature: {wtemp_str}\n"
         f"Zone ages: {age_str}\n"
         f"{yesterday}"
         f"Cumulative reward: {obs['cumulative_reward']}\n"
@@ -415,6 +434,7 @@ def execute_tool_call(env, tool_name, tool_args):
             "storm_zone_probs": tool_args.get("storm_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}),
             "equip_failure_active": tool_args.get("equip_failure_active", 0.2),
             "equip_zone_probs": tool_args.get("equip_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}),
+            "tide_high": tool_args.get("tide_high", 0.5),
         })
         return json.dumps(result, indent=2), False
 
@@ -425,6 +445,7 @@ def execute_tool_call(env, tool_name, tool_args):
             "assume_storm_zone": tool_args.get("assume_storm_zone", "A"),
             "assume_equip_failure": tool_args.get("assume_equip_failure", False),
             "assume_equip_zone": tool_args.get("assume_equip_zone", "A"),
+            "assume_tide_high": tool_args.get("assume_tide_high", False),
             "strategy": tool_args["strategy"],
         })
         return json.dumps(result, indent=2), False
@@ -438,6 +459,7 @@ def execute_tool_call(env, tool_name, tool_args):
             "equip_failure_active": tool_args.get("equip_failure_active", 0.2),
             "equip_zone_probs": tool_args.get("equip_zone_probs",
                                               {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}),
+            "tide_high": tool_args.get("tide_high", 0.5),
         }
         result = env.submit_decisions(
             allocation=allocation,
@@ -548,7 +570,7 @@ class LLMAgent:
 
 class SimulatedLLMAgent(LLMAgent):
     """
-    Mock LLM agent with scripted strategy for v3.
+    Mock LLM agent with scripted strategy for v5.
     Strategy: search weather reports -> search equipment reports -> submit.
     Uses naive pattern matching (falls for causal traps).
     """
@@ -600,10 +622,10 @@ class SimulatedLLMAgent(LLMAgent):
                 boats = 1
             elif self._sea_color == "murky":
                 p_storm = 0.4
-                boats = 2
+                boats = 5
             else:
                 p_storm = 0.15
-                boats = 3
+                boats = 10
 
             p_equip = 0.6 if (self._equip_alert or self._equip_ind == "critical") else 0.15
 

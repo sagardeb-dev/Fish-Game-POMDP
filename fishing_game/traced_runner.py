@@ -44,6 +44,7 @@ class TracedLLMAgent(LLMAgent):
                 "storm": env._hidden_state[0],
                 "wind": env._hidden_state[1],
                 "equip": env._hidden_state[2],
+                "tide": env._hidden_state[3],
                 "storm_zone": env.cfg["wind_to_zone"][env._hidden_state[1]] if env._hidden_state[0] == 1 else None,
                 "equip_zone": env.cfg["equip_to_zone"][env._hidden_state[2]],
                 "state_idx": env._hidden_state_idx,
@@ -251,6 +252,7 @@ def print_traced_episode(output):
         print(f"{'='*90}")
 
         print(f"  [HIDDEN] storm={hs['storm']}, wind={hs['wind']}, equip={hs['equip']}, "
+              f"tide={hs.get('tide', '?')}, "
               f"storm_zone={hs['storm_zone']}, equip_zone={hs['equip_zone']}")
         print()
 

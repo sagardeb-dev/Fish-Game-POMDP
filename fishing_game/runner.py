@@ -6,7 +6,10 @@ Prints comparison table. Verifies baseline ordering, decomposition identity,
 and tool_use_gap behavior (positive for non-SQL agents, ~0 for SQL agents).
 """
 
+import os
 import random as stdlib_random
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from fishing_game.config import CONFIG
 from fishing_game.simulator import FishingGameEnv
 from fishing_game.evaluator import Evaluator
@@ -73,69 +76,117 @@ def run_episode(agent_cls, seed, config=None, ablation=None):
     return total_reward, trace, eval_result
 
 
-def run_ablation_suite(seeds=None, config=None, verify=True):
-    """Run all baselines x all ablation configs x all seeds."""
+def _run_episode_task(task):
+    """Top-level wrapper for ProcessPoolExecutor (must be picklable)."""
+    _, trace, eval_result = run_episode(
+        task["agent_cls"], task["seed"],
+        config=task["config"], ablation=task["ablation"],
+    )
+    return {
+        "config_name": task["config_name"],
+        "agent_name": task["agent_name"],
+        "seed": task["seed"],
+        "eval_result": eval_result,
+    }
+
+
+def run_ablation_suite(seeds=None, config=None, verify=True, max_workers=None):
+    """Run all baselines x all ablation configs x all seeds.
+
+    Args:
+        max_workers: Number of parallel processes. Defaults to CPU count.
+                     Set to 1 to disable parallelism (useful for debugging).
+    """
+    import numpy as np
+
     seeds = seeds or DEFAULT_SEEDS
     cfg = config or CONFIG
-    results = {}
-    all_pass = True
+    if max_workers is None:
+        max_workers = os.cpu_count() or 1
 
-    total_episodes = len(ABLATION_CONFIGS) * len(BASELINES) * len(seeds)
-    episode_num = 0
-
+    # Build task list
+    tasks = []
     for config_name, ablation in ABLATION_CONFIGS.items():
-        results[config_name] = {}
         for agent_name, agent_cls in BASELINES:
-            rewards = []
-            brier_storms = []
-            brier_equips = []
-            detection_lags = []
-            tool_gaps = []
-            inference_gaps = []
-            planning_gaps = []
-
             for seed in seeds:
-                episode_num += 1
-                total_reward, trace, eval_result = run_episode(
-                    agent_cls, seed, config=cfg, ablation=ablation,
-                )
+                tasks.append({
+                    "config_name": config_name,
+                    "agent_name": agent_name,
+                    "agent_cls": agent_cls,
+                    "seed": seed,
+                    "config": cfg,
+                    "ablation": ablation,
+                })
+
+    total = len(tasks)
+    completed = 0
+    all_pass = True
+    collected = {}
+
+    if max_workers == 1:
+        for task in tasks:
+            result = _run_episode_task(task)
+            completed += 1
+            print(
+                f"  [{completed:>3}/{total}] "
+                f"{result['config_name']:<14} {result['agent_name']:<16} "
+                f"seed={result['seed']:<5} "
+                f"reward={result['eval_result']['total_reward']:>8.1f}",
+                flush=True,
+            )
+            key = (result["config_name"], result["agent_name"])
+            collected.setdefault(key, []).append(result["eval_result"])
+    else:
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = {executor.submit(_run_episode_task, t): t for t in tasks}
+            for future in as_completed(futures):
+                result = future.result()
+                completed += 1
                 print(
-                    f"  [{episode_num:>3}/{total_episodes}] "
-                    f"{config_name:<14} {agent_name:<16} seed={seed:<5} "
-                    f"reward={eval_result['total_reward']:>8.1f}",
+                    f"  [{completed:>3}/{total}] "
+                    f"{result['config_name']:<14} {result['agent_name']:<16} "
+                    f"seed={result['seed']:<5} "
+                    f"reward={result['eval_result']['total_reward']:>8.1f}",
                     flush=True,
                 )
+                key = (result["config_name"], result["agent_name"])
+                collected.setdefault(key, []).append(result["eval_result"])
 
-                rewards.append(eval_result["total_reward"])
-                brier_storms.append(eval_result["mean_brier_storm"])
-                brier_equips.append(eval_result["mean_brier_equip"])
-                detection_lags.append(eval_result["mean_detection_lag"])
-                tool_gaps.append(eval_result["total_tool_use_gap"])
-                inference_gaps.append(eval_result["total_inference_gap"])
-                planning_gaps.append(eval_result["total_planning_gap"])
+    # Aggregate results
+    results = {}
+    for (config_name, agent_name), eval_results in collected.items():
+        if config_name not in results:
+            results[config_name] = {}
 
-                # Verify decomposition identity
-                if verify:
-                    for step in eval_result["step_results"]:
-                        gap_sum = (step["tool_use_gap"] + step["inference_gap"]
-                                   + step["planning_gap"])
-                        expected = step["oracle_reward"] - step["actual_reward"]
-                        if abs(gap_sum - expected) > 1e-10:
-                            print(f"DECOMPOSITION FAILED: {config_name}/{agent_name} "
-                                  f"seed={seed} day={step['day']}")
-                            all_pass = False
+        rewards = [e["total_reward"] for e in eval_results]
+        brier_storms = [e["mean_brier_storm"] for e in eval_results]
+        brier_equips = [e["mean_brier_equip"] for e in eval_results]
+        detection_lags = [e["mean_detection_lag"] for e in eval_results]
+        tool_gaps = [e["total_tool_use_gap"] for e in eval_results]
+        inference_gaps = [e["total_inference_gap"] for e in eval_results]
+        planning_gaps = [e["total_planning_gap"] for e in eval_results]
 
-            import numpy as np
-            results[config_name][agent_name] = {
-                "reward_mean": np.mean(rewards),
-                "reward_std": np.std(rewards),
-                "brier_storm": np.mean(brier_storms),
-                "brier_equip": np.mean(brier_equips),
-                "detection_lag": np.mean(detection_lags),
-                "tool_gap": np.mean(tool_gaps),
-                "inference_gap": np.mean(inference_gaps),
-                "planning_gap": np.mean(planning_gaps),
-            }
+        if verify:
+            for eval_result in eval_results:
+                for step in eval_result["step_results"]:
+                    gap_sum = (step["tool_use_gap"] + step["inference_gap"]
+                               + step["planning_gap"])
+                    expected = step["oracle_reward"] - step["actual_reward"]
+                    if abs(gap_sum - expected) > 1e-10:
+                        print(f"DECOMPOSITION FAILED: {config_name}/{agent_name} "
+                              f"day={step['day']}")
+                        all_pass = False
+
+        results[config_name][agent_name] = {
+            "reward_mean": np.mean(rewards),
+            "reward_std": np.std(rewards),
+            "brier_storm": np.mean(brier_storms),
+            "brier_equip": np.mean(brier_equips),
+            "detection_lag": np.mean(detection_lags),
+            "tool_gap": np.mean(tool_gaps),
+            "inference_gap": np.mean(inference_gaps),
+            "planning_gap": np.mean(planning_gaps),
+        }
 
     return results, all_pass
 
@@ -232,10 +283,17 @@ def verify_tool_use_gaps(results):
 
 def main():
     """Run the full ablation suite and print results."""
-    print(f"Running ablation suite: 3 configs x 5 baselines x 10 seeds = 150 episodes")
+    n_episodes = len(ABLATION_CONFIGS) * len(BASELINES) * len(DEFAULT_SEEDS)
+    workers = os.cpu_count() or 1
+    print(f"Running ablation suite: {len(ABLATION_CONFIGS)} configs x "
+          f"{len(BASELINES)} baselines x {len(DEFAULT_SEEDS)} seeds = "
+          f"{n_episodes} episodes ({workers} workers)")
     print("=" * 80)
 
+    t0 = time.time()
     results, decomposition_ok = run_ablation_suite()
+    elapsed = time.time() - t0
+
     print_comparison_table(results)
 
     print("\n" + "=" * 80)
@@ -253,6 +311,8 @@ def main():
         print("\nAll verifications PASSED.")
     else:
         print("\nSome verifications FAILED. See above for details.")
+
+    print(f"\nCompleted in {elapsed:.1f}s ({n_episodes/elapsed:.1f} episodes/s)")
 
     return results
 

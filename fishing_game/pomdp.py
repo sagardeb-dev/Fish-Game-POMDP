@@ -1,12 +1,13 @@
 """
-POMDP model for the Fishing Game v3 — Causal reasoning traps.
+POMDP model for the Fishing Game v5 — Causal reasoning traps + tide/water temp.
 
-40 states = 2(storm) x 4(wind) x 5(equip_failure).
-Transition matrix built as Kronecker product of 3 factored sub-matrices.
+80 states = 2(storm) x 4(wind) x 5(equip_failure) x 2(tide).
+Transition matrix built as Kronecker product of 4 factored sub-matrices.
 Belief update handles: sea_color, equip_indicator, barometer, buoy(zone)
 with wave propagation, equip_inspection(zone) with age confound,
-maintenance_alerts(zone) with Poisson likelihood.
-Reward: dual-risk + fish abundance bonus for zones adjacent to storm.
+maintenance_alerts(zone) with Poisson likelihood,
+water_temp(zone) with tide + zone age confound.
+Reward: dual-risk + fish abundance bonus + tide bonus.
 
 All parameterized from config.
 """
@@ -20,7 +21,7 @@ class FishingPOMDP:
     def __init__(self, config=None):
         cfg = config or CONFIG
         self.cfg = cfg
-        self.states = cfg["states"]  # list of (storm, wind, equip) tuples
+        self.states = cfg["states"]  # list of (storm, wind, equip, tide) tuples
         self.n_states = len(self.states)
         self.sea_color_probs = cfg["sea_color_probs"]
         self.equip_indicator_probs = cfg["equip_indicator_probs"]
@@ -42,21 +43,25 @@ class FishingPOMDP:
         self.age_offset_factor = cfg["equipment_age_offset_factor"]
         self.zone_ages = cfg["zone_infrastructure_age"]
         self.maintenance_params = cfg["maintenance_alert_params"]
+        self.tide_bonus = cfg["tide_bonus"]
+        self.water_temp_params = cfg["water_temp_params"]
+        self.zone_temp_offset = cfg["zone_temp_offset"]
 
         # Build state index for fast lookup
         self._state_idx = {s: i for i, s in enumerate(self.states)}
 
-        # Build 40x40 transition matrix from Kronecker product
+        # Build 80x80 transition matrix from Kronecker product
         self.T = self._build_transition_matrix(cfg)
 
     def _build_transition_matrix(self, cfg):
-        """Build full transition matrix as Kronecker product of 3 sub-matrices."""
+        """Build full transition matrix as Kronecker product of 4 sub-matrices."""
         T_storm = np.array(cfg["storm_transition"], dtype=np.float64)
         T_wind = np.array(cfg["wind_transition"], dtype=np.float64)
         T_equip = np.array(cfg["equip_transition"], dtype=np.float64)
+        T_tide = np.array(cfg["tide_transition"], dtype=np.float64)
 
-        # Kronecker product: T = T_storm (x) T_wind (x) T_equip
-        T = np.kron(T_storm, np.kron(T_wind, T_equip))
+        # Kronecker product: T = T_storm (x) T_wind (x) T_equip (x) T_tide
+        T = np.kron(T_storm, np.kron(T_wind, np.kron(T_equip, T_tide)))
 
         # Verify shape and row sums
         assert T.shape == (self.n_states, self.n_states), f"T shape {T.shape} != ({self.n_states}, {self.n_states})"
@@ -68,12 +73,12 @@ class FishingPOMDP:
 
     def _storm_zone(self, state):
         """Which zone the storm hits, given state tuple."""
-        _, wind, _ = state
+        _, wind, _, _ = state
         return self.wind_to_zone[wind]
 
     def _equip_zone(self, state):
         """Which zone has equipment failure, or None."""
-        _, _, equip = state
+        _, _, equip, _ = state
         return self.equip_to_zone[equip]
 
     # =========================================================================
@@ -99,7 +104,7 @@ class FishingPOMDP:
 
     def _obs_likelihood_buoy(self, reading, state_idx, buoy_zone):
         """P(buoy_reading | state, buoy_zone). Uses wave propagation model."""
-        storm, wind, _ = self.states[state_idx]
+        storm, wind, _, _ = self.states[state_idx]
         if storm == 0:
             params = self.buoy_params["normal"]
         else:
@@ -139,6 +144,16 @@ class FishingPOMDP:
             return 1.0 if k == 0 else 0.0
         return (rate ** k) * math.exp(-rate) / math.factorial(k)
 
+    def _obs_likelihood_water_temp(self, reading, state_idx, zone):
+        """P(water_temp | state, zone). Depends on tide + zone age confound."""
+        tide = self.states[state_idx][3]
+        base = self.water_temp_params["base"]
+        tide_effect = self.water_temp_params["tide_effect"]
+        zone_offset = self.zone_temp_offset[zone]
+        mean = base["mean"] + tide_effect * tide + zone_offset
+        std = base["std"]
+        return _normal_pdf(reading, mean, std)
+
     # =========================================================================
     # Belief operations
     # =========================================================================
@@ -149,18 +164,18 @@ class FishingPOMDP:
 
     def belief_update(self, prior, observations):
         """
-        Exact Bayesian filtering over 40-state space.
+        Exact Bayesian filtering over 80-state space.
 
         Args:
-            prior: length-40 probability vector over states
+            prior: length-80 probability vector over states
             observations: list of (obs_type, obs_value) tuples where
                 obs_type is one of:
                   "sea_color", "equip_indicator", "barometer",
                   ("buoy", zone), ("equip_inspection", zone),
-                  ("maintenance_alerts", zone)
+                  ("maintenance_alerts", zone), ("water_temp", zone)
 
         Returns:
-            posterior: length-40 probability vector
+            posterior: length-80 probability vector
         """
         belief = np.array(prior, dtype=np.float64).copy()
 
@@ -179,6 +194,8 @@ class FishingPOMDP:
                     likelihoods[i] = self._obs_likelihood_equip_inspection(obs_value, i, obs_type[1])
                 elif isinstance(obs_type, tuple) and obs_type[0] == "maintenance_alerts":
                     likelihoods[i] = self._obs_likelihood_maintenance(obs_value, i, obs_type[1])
+                elif isinstance(obs_type, tuple) and obs_type[0] == "water_temp":
+                    likelihoods[i] = self._obs_likelihood_water_temp(obs_value, i, obs_type[1])
                 else:
                     raise ValueError(f"Unknown observation type: {obs_type}")
 
@@ -203,12 +220,13 @@ class FishingPOMDP:
 
         Per zone, per boat:
           - Safe (no risk):           +7 (+ fish abundance bonus if adjacent to storm)
+                                         (+ tide bonus if tide is high)
           - Storm only:              -18
           - Equipment failure only:  -10
           - Both storm + equip:      -25
         """
         state = self.states[state_idx]
-        storm, wind, equip = state
+        storm, wind, equip, tide = state
         storm_zone = self.wind_to_zone[wind] if storm == 1 else None
         equip_zone = self.equip_to_zone[equip]
 
@@ -233,6 +251,8 @@ class FishingPOMDP:
                 if storm == 1:
                     distance = self.zone_adjacency[storm_zone][zone]
                     profit += self.fish_abundance_bonus.get(distance, 0)
+                # Tide bonus for high tide on safe zones
+                profit += self.tide_bonus.get(tide, 0)
                 total += profit * boats
 
         return total
@@ -246,7 +266,7 @@ class FishingPOMDP:
 
     def optimal_action(self, belief):
         """
-        Enumerate all 35 valid allocations and return the best.
+        Enumerate all valid allocations and return the best.
 
         Returns: (allocation_dict, expected_reward)
         """
@@ -266,7 +286,7 @@ class FishingPOMDP:
     def p_storm(self, belief):
         """P(storm=1) from belief vector."""
         total = 0.0
-        for i, (storm, _, _) in enumerate(self.states):
+        for i, (storm, _, _, _) in enumerate(self.states):
             if storm == 1:
                 total += belief[i]
         return total
@@ -274,16 +294,15 @@ class FishingPOMDP:
     def p_equip_failure(self, belief):
         """P(equip_failure > 0) from belief vector."""
         total = 0.0
-        for i, (_, _, equip) in enumerate(self.states):
+        for i, (_, _, equip, _) in enumerate(self.states):
             if equip > 0:
                 total += belief[i]
         return total
 
     def p_storm_zone(self, belief, zone):
         """P(storm hits this zone) = P(storm=1 AND wind maps to zone)."""
-        # Reverse lookup: which wind values map to this zone
         total = 0.0
-        for i, (storm, wind, _) in enumerate(self.states):
+        for i, (storm, wind, _, _) in enumerate(self.states):
             if storm == 1 and self.wind_to_zone[wind] == zone:
                 total += belief[i]
         return total
@@ -292,8 +311,16 @@ class FishingPOMDP:
         """P(equipment failure in this zone)."""
         zone_equip = self.cfg["zone_to_equip"][zone]
         total = 0.0
-        for i, (_, _, equip) in enumerate(self.states):
+        for i, (_, _, equip, _) in enumerate(self.states):
             if equip == zone_equip:
+                total += belief[i]
+        return total
+
+    def p_tide(self, belief):
+        """P(tide=1) from belief vector."""
+        total = 0.0
+        for i, (_, _, _, tide) in enumerate(self.states):
+            if tide == 1:
                 total += belief[i]
         return total
 

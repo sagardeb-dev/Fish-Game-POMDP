@@ -1,45 +1,51 @@
 """
-Single config dict that parameterizes both the POMDP model and the simulator.
-Every probability, reward value, observation parameter, signal template,
-and tool budget derives from this one config. Change it here, it changes everywhere.
+Config dicts that parameterize the POMDP model and the simulator.
 
-V3: Causal reasoning traps.
-  40 states = 2(storm) x 4(wind) x 5(equip_failure)
+Three configs:
+  EASY_CONFIG  — all zones visible, well-separated distributions
+  HARD_CONFIG  — noisier distributions, tighter budgets, all zones visible
+  BENCHMARK_CONFIG — HARD distributions + only 2 of 4 zones report sensors/day
+
+CONFIG = BENCHMARK_CONFIG (default used by runner, baselines, tests).
+
+V5: 80 states = 2(storm) x 4(wind) x 5(equip_failure) x 2(tide)
   4 zones: A, B, C, D (ring: A-B-C-D-A)
   2 independent risks: storm + equipment failure
-  Causal traps: wave propagation, age-confounded equipment, fish abundance bonus
-  All raw sensors free; only interpretive tools are budget-gated
+  4 causal traps: wave propagation, age-confounded equipment,
+                  fish abundance bonus, water temperature confound
 """
 
 import itertools
 
 # ============================================================================
-# Helper: generate 40 states as 3-tuples
+# Helper: generate 80 states as 4-tuples
 # ============================================================================
 
 def _generate_states():
-    """Generate all (storm, wind, equip_failure) 3-tuples.
+    """Generate all (storm, wind, equip_failure, tide) 4-tuples.
 
     storm: 0 or 1
     wind: "N", "S", "E", "W"
     equip_failure: 0 (none), 1 (A), 2 (B), 3 (C), 4 (D)
+    tide: 0 (low), 1 (high)
 
-    Returns list of 40 tuples and a dict mapping tuple -> index.
+    Returns list of 80 tuples.
     """
     storms = [0, 1]
     winds = ["N", "S", "E", "W"]
     equips = [0, 1, 2, 3, 4]
-    states = [(s, w, e) for s in storms for w in winds for e in equips]
+    tides = [0, 1]
+    states = [(s, w, e, t) for s in storms for w in winds for e in equips for t in tides]
     return states
 
 
-def _generate_valid_allocations(max_boats=3, zones=None):
+def _generate_valid_allocations(max_boats=10, zones=None):
     """Generate all valid boat allocations across zones.
 
     An allocation is a dict {zone: n_boats} where sum in [1, max_boats]
     and each value >= 0.
 
-    For 4 zones, max_boats=3: 35 allocations.
+    For 4 zones, max_boats=10: ~715 allocations.
     """
     zones = zones or ["A", "B", "C", "D"]
     n_zones = len(zones)
@@ -78,11 +84,11 @@ ZONE_ADJACENCY = {
 
 
 # ============================================================================
-# Main CONFIG
+# Easy CONFIG — all zones visible, well-separated distributions
 # ============================================================================
 
-CONFIG = {
-    # --- States: 40 = 2(storm) x 4(wind) x 5(equip) ---
+EASY_CONFIG = {
+    # --- States: 80 = 2(storm) x 4(wind) x 5(equip) x 2(tide) ---
     "states": _STATES,
 
     # --- Factored transition sub-matrices ---
@@ -105,6 +111,14 @@ CONFIG = {
         [0.40, 0.05, 0.05, 0.45, 0.05],  # from C broken
         [0.40, 0.05, 0.05, 0.05, 0.45],  # from D broken
     ],
+    "tide_transition": [
+        [0.70, 0.30],   # from low tide
+        [0.35, 0.65],   # from high tide
+    ],
+
+    # --- Tide labels and bonus ---
+    "tide_to_label": {0: "low", 1: "high"},
+    "tide_bonus": {0: 0, 1: 2},  # per-boat bonus for high tide on safe zones
 
     # --- Zone mappings ---
     "wind_to_zone": WIND_TO_ZONE,
@@ -156,6 +170,14 @@ CONFIG = {
         "age_rate_factor": 0.3,   # base rate per year of age
         "failure_signal": 5.0,    # additional rate when zone actually broken
     },
+
+    # Water temperature: Normal(base + tide_effect * tide + zone_offset, std)
+    # Causal trap 4: zone age confounds water temp (zone A always warm)
+    "water_temp_params": {
+        "base": {"mean": 15.0, "std": 1.0},
+        "tide_effect": 1.5,         # high tide adds this
+    },
+    "zone_temp_offset": {"A": 1.0, "B": 0.5, "C": 0.0, "D": -0.2},
 
     # Fish abundance bonus: extra profit for zones adjacent to storm (currents bring fish)
     "fish_abundance_bonus": {0: 0, 1: 3, 2: 0},  # keyed by distance from storm
@@ -229,14 +251,14 @@ CONFIG = {
 
     # --- Episode parameters ---
     "episode_length": 20,
-    "max_boats": 3,
+    "max_boats": 10,
     "zones": ["A", "B", "C", "D"],
 
     # --- Valid allocations (precomputed) ---
     "valid_allocations": _VALID_ALLOCATIONS,
 
     # --- Tool budgets (per day, no rollover) ---
-    # Raw sensors (barometer, buoys, inspections, maintenance alerts) are FREE.
+    # Raw sensors (barometer, buoys, inspections, maintenance alerts, water_temp) are FREE.
     # Only interpretive/analytical tools are budget-gated.
     "tool_budgets": {
         "check_weather_reports": 2,
@@ -248,8 +270,8 @@ CONFIG = {
         "forecast_scenario": 1,
     },
 
-    # --- Initial belief (uniform over 40 states) ---
-    "initial_belief": [1.0 / 40] * 40,
+    # --- Initial belief (uniform over 80 states) ---
+    "initial_belief": [1.0 / 80] * 80,
 }
 
 
@@ -258,7 +280,7 @@ CONFIG = {
 # ============================================================================
 
 HARD_CONFIG = {
-    **CONFIG,
+    **EASY_CONFIG,
 
     # Storms less persistent, wind shifts more
     "storm_transition": [
@@ -278,6 +300,14 @@ HARD_CONFIG = {
         [0.30, 0.06, 0.07, 0.50, 0.07],
         [0.30, 0.07, 0.06, 0.07, 0.50],
     ],
+    # Tide transition same as easy
+    "tide_transition": [
+        [0.70, 0.30],
+        [0.35, 0.65],
+    ],
+
+    # Tide bonus smaller in hard mode
+    "tide_bonus": {0: 0, 1: 1},
 
     # Sea color less diagnostic
     "sea_color_probs": {
@@ -312,19 +342,26 @@ HARD_CONFIG = {
     },
     "equipment_age_offset_factor": 0.15,  # stronger age confound in hard mode
 
+    # Water temperature: noisier, smaller tide effect, stronger confound
+    "water_temp_params": {
+        "base": {"mean": 15.0, "std": 1.5},
+        "tide_effect": 1.0,
+    },
+    "zone_temp_offset": {"A": 1.5, "B": 0.8, "C": 0.0, "D": -0.3},
+
     # Weather signals noisier
     "signal_tiers": {
         1: {
             "emission_prob": {0: 0.08, 1: 0.60},
-            "headlines": CONFIG["signal_tiers"][1]["headlines"],
+            "headlines": EASY_CONFIG["signal_tiers"][1]["headlines"],
         },
         2: {
             "emission_prob": {0: 0.15, 1: 0.45},
-            "headlines": CONFIG["signal_tiers"][2]["headlines"],
+            "headlines": EASY_CONFIG["signal_tiers"][2]["headlines"],
         },
         3: {
             "emission_prob_always": 0.30,
-            "headlines": CONFIG["signal_tiers"][3]["headlines"],
+            "headlines": EASY_CONFIG["signal_tiers"][3]["headlines"],
         },
     },
 
@@ -332,15 +369,15 @@ HARD_CONFIG = {
     "equipment_signal_tiers": {
         1: {
             "emission_prob": {0: 0.08, 1: 0.55},
-            "headlines": CONFIG["equipment_signal_tiers"][1]["headlines"],
+            "headlines": EASY_CONFIG["equipment_signal_tiers"][1]["headlines"],
         },
         2: {
             "emission_prob": {0: 0.15, 1: 0.40},
-            "headlines": CONFIG["equipment_signal_tiers"][2]["headlines"],
+            "headlines": EASY_CONFIG["equipment_signal_tiers"][2]["headlines"],
         },
         3: {
             "emission_prob_always": 0.30,
-            "headlines": CONFIG["equipment_signal_tiers"][3]["headlines"],
+            "headlines": EASY_CONFIG["equipment_signal_tiers"][3]["headlines"],
         },
     },
 
@@ -355,3 +392,19 @@ HARD_CONFIG = {
         "forecast_scenario": 1,
     },
 }
+
+
+# ============================================================================
+# Benchmark CONFIG — HARD distributions + limited sensor zone visibility
+# ============================================================================
+
+BENCHMARK_CONFIG = {
+    **HARD_CONFIG,
+
+    # Only 2 of 4 zones report sensors each day (randomly selected).
+    # Forces agents to rely on transition model between steps.
+    "sensor_zones_per_step": 2,
+}
+
+# Default CONFIG used everywhere: benchmark difficulty
+CONFIG = BENCHMARK_CONFIG

@@ -1,18 +1,18 @@
 """
-Fishing Game Simulator v4 — Discoverable causal structure.
+Fishing Game Simulator v5 — Labels removed + tide/water temp confound.
 
-40 hidden states = 2(storm) x 4(wind) x 5(equip_failure).
+80 hidden states = 2(storm) x 4(wind) x 5(equip_failure) x 2(tide).
 4 zones: A, B, C, D (ring topology for wave propagation).
 2 independent risks: storm + equipment failure.
+1 hidden bonus factor: tide (affects reward via water temperature).
 
 Two-tier observation model:
-  Tier 1 (free): sea_color, equip_indicator, barometer, 4x maintenance_alerts (7 obs)
+  Tier 1 (free): sea_color, equip_indicator, barometer, 4x maintenance_alerts, 4x water_temp (11 obs)
   Tier 2 (SQL-discoverable): 4x buoy readings, 4x equipment inspections (8 obs)
 
-Tier 2 observations appear in the text bundle but only count for the evaluator's
-POMDP belief computation if the agent used SQL tools to discover the causal structure.
-The enriched historical DB (sensor_log + catch_history) makes wave propagation and
-age confound patterns discoverable through data analysis.
+daily_conditions table exists for oracle/evaluator but is HIDDEN from agent:
+  - Not in db_schema string
+  - SQL queries referencing it are blocked
 
 Budget-gated tools: search, SQL queries, analysis, optimizer, forecast.
 All parameters derive from the shared config.
@@ -35,9 +35,10 @@ from fishing_game.pomdp import FishingPOMDP
 
 class FishingGameEnv:
     """
-    OpenEnv-compatible fishing game environment v4.
+    OpenEnv-compatible fishing game environment v5.
     All interaction through reset(), tool calls, and submit_decisions().
     Two-tier observation model: Tier 1 (free) + Tier 2 (SQL-discoverable).
+    daily_conditions hidden from agent.
     """
 
     def __init__(self, config=None, ablation=None):
@@ -59,7 +60,7 @@ class FishingGameEnv:
         self._yesterday_allocation = None
         self._episode_active = True
 
-        # Sample initial hidden state (uniform over 40)
+        # Sample initial hidden state (uniform over 80)
         self._hidden_state_idx = self._sample_initial_state()
         self._hidden_state = self.cfg["states"][self._hidden_state_idx]
 
@@ -88,7 +89,12 @@ class FishingGameEnv:
         self._available_buoys = {z: self._sample_buoy(z) for z in self.cfg["zones"]}
         self._available_inspections = {z: self._sample_inspection(z) for z in self.cfg["zones"]}
         self._available_maintenance_alerts = self._sample_maintenance_alerts()
+        self._available_water_temps = {z: self._sample_water_temp(z) for z in self.cfg["zones"]}
         self._store_maintenance_alerts(self._available_maintenance_alerts)
+
+        # Select which zones report sensors this day
+        n_sensor_zones = self.cfg.get("sensor_zones_per_step", len(self.cfg["zones"]))
+        self._sensor_zones = sorted(self._rng.sample(self.cfg["zones"], n_sensor_zones))
 
         # Track tool usage for this step
         self._step_tool_usage = []
@@ -96,11 +102,11 @@ class FishingGameEnv:
         return self._make_observation_bundle()
 
     def _sample_initial_state(self):
-        """Sample initial state from uniform distribution over 40 states."""
+        """Sample initial state from uniform distribution over 80 states."""
         return self._rng.randint(0, self.pomdp.n_states - 1)
 
     def _init_db(self):
-        """Create the visible database tables."""
+        """Create the database tables."""
         cur = self._db.cursor()
         cur.execute("""
             CREATE TABLE daily_log (
@@ -137,7 +143,8 @@ class FishingGameEnv:
                 storm_zone     TEXT,
                 equip_zone     TEXT,
                 barometer      REAL,
-                sea_color      TEXT
+                sea_color      TEXT,
+                tide           INTEGER
             )
         """)
         cur.execute("""
@@ -152,7 +159,8 @@ class FishingGameEnv:
                 day                INTEGER,
                 zone               TEXT,
                 buoy_reading       REAL,
-                equipment_reading  REAL
+                equipment_reading  REAL,
+                water_temp         REAL
             )
         """)
         self._db.commit()
@@ -167,7 +175,7 @@ class FishingGameEnv:
 
         for day in range(-n_days, 0):
             state = self.cfg["states"][state_idx]
-            storm, wind, equip = state
+            storm, wind, equip, tide = state
             storm_zone = self.cfg["wind_to_zone"][wind] if storm == 1 else None
             equip_zone = self.cfg["equip_to_zone"][equip]
 
@@ -179,33 +187,35 @@ class FishingGameEnv:
             sc_weights = [sc_probs[c] for c in sc_colors]
             hist_sea_color = hist_rng.choices(sc_colors, weights=sc_weights, k=1)[0]
 
-            # Daily conditions (1 row per day — joinable to any per-zone table)
+            # Daily conditions (1 row per day — for oracle/evaluator only)
             cur.execute(
                 "INSERT INTO daily_conditions "
-                "(day, storm_active, storm_zone, equip_zone, barometer, sea_color) "
-                "VALUES (?, ?, ?, ?, ?, ?)",
+                "(day, storm_active, storm_zone, equip_zone, barometer, sea_color, tide) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (day, storm, storm_zone, equip_zone,
-                 round(hist_barometer, 2), hist_sea_color),
+                 round(hist_barometer, 2), hist_sea_color, tide),
             )
 
-            # Prior captain picks a random zone and sends 3 boats
+            # Prior captain picks a random zone and sends boats
             zone = hist_rng.choice(self.cfg["zones"])
             alloc = {z: 0 for z in self.cfg["zones"]}
-            alloc[zone] = 3
+            alloc[zone] = self.cfg["max_boats"]
             reward = self.pomdp.reward(state_idx, alloc)
             cur.execute(
                 "INSERT INTO catch_history (day, zone, boats, reward) VALUES (?, ?, ?, ?)",
-                (day, zone, 3, reward),
+                (day, zone, self.cfg["max_boats"], reward),
             )
 
-            # Sensor log: buoy + equipment readings for all 4 zones
+            # Sensor log: buoy + equipment + water_temp readings for all 4 zones
             for z in self.cfg["zones"]:
                 buoy_val = self._sample_buoy_for_state(z, state, hist_np_rng)
                 equip_val = self._sample_inspection_for_state(z, state, hist_np_rng)
+                wtemp_val = self._sample_water_temp_for_state(z, state, hist_np_rng)
                 cur.execute(
-                    "INSERT INTO sensor_log (day, zone, buoy_reading, equipment_reading) "
-                    "VALUES (?, ?, ?, ?)",
-                    (day, z, round(float(buoy_val), 2), round(float(equip_val), 2)),
+                    "INSERT INTO sensor_log (day, zone, buoy_reading, equipment_reading, water_temp) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (day, z, round(float(buoy_val), 2), round(float(equip_val), 2),
+                     round(float(wtemp_val), 2)),
                 )
 
             # Maintenance alerts with age confound
@@ -256,7 +266,7 @@ class FishingGameEnv:
 
     def _sample_buoy(self, zone):
         """Pre-sample buoy reading with wave propagation model."""
-        storm, wind, _ = self._hidden_state
+        storm, wind, _, _ = self._hidden_state
         if storm == 0:
             params = self.cfg["buoy_params"]["normal"]
         else:
@@ -272,7 +282,7 @@ class FishingGameEnv:
 
     def _sample_inspection(self, zone):
         """Pre-sample equipment inspection reading with age confound."""
-        _, _, equip = self._hidden_state
+        _, _, equip, _ = self._hidden_state
         equip_zone = self.cfg["equip_to_zone"][equip]
         if equip_zone == zone:
             params = self.cfg["equipment_inspection_params"]["broken"]
@@ -281,9 +291,19 @@ class FishingGameEnv:
         age_offset = self.cfg["zone_infrastructure_age"][zone] * self.cfg["equipment_age_offset_factor"]
         return self._np_rng.normal(params["mean"] + age_offset, params["std"])
 
+    def _sample_water_temp(self, zone):
+        """Pre-sample water temperature with tide effect + zone age confound."""
+        tide = self._hidden_state[3]
+        base = self.cfg["water_temp_params"]["base"]
+        tide_effect = self.cfg["water_temp_params"]["tide_effect"]
+        zone_offset = self.cfg["zone_temp_offset"][zone]
+        mean = base["mean"] + tide_effect * tide + zone_offset
+        std = base["std"]
+        return self._np_rng.normal(mean, std)
+
     def _sample_maintenance_alerts(self):
         """Sample Poisson maintenance alerts per zone with age confound."""
-        _, _, equip = self._hidden_state
+        _, _, equip, _ = self._hidden_state
         equip_zone = self.cfg["equip_to_zone"][equip]
         maint_params = self.cfg["maintenance_alert_params"]
         alerts = {}
@@ -297,7 +317,7 @@ class FishingGameEnv:
 
     def _sample_buoy_for_state(self, zone, state, np_rng):
         """Sample a buoy reading for a given zone and explicit state tuple."""
-        storm, wind, _ = state
+        storm, wind, _, _ = state
         if storm == 0:
             params = self.cfg["buoy_params"]["normal"]
         else:
@@ -313,7 +333,7 @@ class FishingGameEnv:
 
     def _sample_inspection_for_state(self, zone, state, np_rng):
         """Sample an equipment inspection reading for a given zone and explicit state tuple."""
-        _, _, equip = state
+        _, _, equip, _ = state
         equip_zone = self.cfg["equip_to_zone"][equip]
         if equip_zone == zone:
             params = self.cfg["equipment_inspection_params"]["broken"]
@@ -321,6 +341,16 @@ class FishingGameEnv:
             params = self.cfg["equipment_inspection_params"]["ok"]
         age_offset = self.cfg["zone_infrastructure_age"][zone] * self.cfg["equipment_age_offset_factor"]
         return np_rng.normal(params["mean"] + age_offset, params["std"])
+
+    def _sample_water_temp_for_state(self, zone, state, np_rng):
+        """Sample water temperature for a given zone and explicit state tuple."""
+        tide = state[3]
+        base = self.cfg["water_temp_params"]["base"]
+        tide_effect = self.cfg["water_temp_params"]["tide_effect"]
+        zone_offset = self.cfg["zone_temp_offset"][zone]
+        mean = base["mean"] + tide_effect * tide + zone_offset
+        std = base["std"]
+        return np_rng.normal(mean, std)
 
     def _store_maintenance_alerts(self, alerts):
         """Store today's maintenance alerts in the database."""
@@ -333,22 +363,26 @@ class FishingGameEnv:
         self._db.commit()
 
     def _build_free_observations(self):
-        """Build Tier 1 observations — always free, no SQL needed (7 obs)."""
+        """Build Tier 1 observations — always free, no SQL needed.
+        Zone-specific sensors limited to sensor_zones."""
         obs = [
             ("sea_color", self._current_sea_color),
             ("equip_indicator", self._current_equip_indicator),
             ("barometer", float(self._available_barometer)),
         ]
-        for zone in self.cfg["zones"]:
+        for zone in self._sensor_zones:
             obs.append((("maintenance_alerts", zone), self._available_maintenance_alerts[zone]))
+        for zone in self._sensor_zones:
+            obs.append((("water_temp", zone), float(self._available_water_temps[zone])))
         return obs
 
     def _build_sql_discoverable_observations(self):
-        """Build Tier 2 observations — only count if agent used SQL tools (8 obs)."""
+        """Build Tier 2 observations — only count if agent used SQL tools.
+        Zone-specific sensors limited to sensor_zones."""
         obs = []
-        for zone in self.cfg["zones"]:
+        for zone in self._sensor_zones:
             obs.append((("buoy", zone), float(self._available_buoys[zone])))
-        for zone in self.cfg["zones"]:
+        for zone in self._sensor_zones:
             obs.append((("equip_inspection", zone), float(self._available_inspections[zone])))
         return obs
 
@@ -467,18 +501,22 @@ class FishingGameEnv:
         """Create the observation bundle the agent receives each day."""
         available_tools = [t for t in self.cfg["tool_budgets"] if self.ablation.get(t, True)]
         budget = {t: self._budgets[t] for t in available_tools}
+        sz = self._sensor_zones
 
         return {
             "day": self._day,
             "days_remaining": self.cfg["episode_length"] - self._day,
+            # Which zones have sensor data this day
+            "sensor_zones": list(sz),
             # Free categorical observations
             "sea_color": self._current_sea_color,
             "equip_indicator": self._current_equip_indicator,
-            # Free continuous sensors
+            # Free continuous sensors (only for sensor_zones)
             "barometer": round(float(self._available_barometer), 2),
-            "buoy_readings": {z: round(float(self._available_buoys[z]), 2) for z in self.cfg["zones"]},
-            "equipment_readings": {z: round(float(self._available_inspections[z]), 2) for z in self.cfg["zones"]},
-            "maintenance_alerts": dict(self._available_maintenance_alerts),
+            "buoy_readings": {z: round(float(self._available_buoys[z]), 2) for z in sz},
+            "equipment_readings": {z: round(float(self._available_inspections[z]), 2) for z in sz},
+            "maintenance_alerts": {z: self._available_maintenance_alerts[z] for z in sz},
+            "water_temp_readings": {z: round(float(self._available_water_temps[z]), 2) for z in sz},
             # Zone metadata (constant, provided for convenience)
             "zone_infrastructure_ages": dict(self.cfg["zone_infrastructure_age"]),
             # Episode context
@@ -493,14 +531,11 @@ class FishingGameEnv:
                 "  - Your complete fishing log\n\n"
                 "weather_signals (signal_id, day, source_type, report_type, headline, body)\n"
                 "  - Weather and equipment intelligence reports (report_type: 'weather' or 'equipment')\n\n"
-                "daily_conditions (day, storm_active, storm_zone, equip_zone, barometer, sea_color)\n"
-                "  - One row per day: actual conditions (30 days of pre-episode history + current season)\n"
-                "  - JOIN to sensor_log or catch_history on day\n\n"
                 "catch_history (day, zone, boats, reward)\n"
                 "  - Historical catch outcomes by zone (includes 30 days of pre-episode history)\n\n"
                 "maintenance_log (day, zone, alerts)\n"
                 "  - Maintenance alert counts per zone per day (includes 30 days of pre-episode history)\n\n"
-                "sensor_log (day, zone, buoy_reading, equipment_reading)\n"
+                "sensor_log (day, zone, buoy_reading, equipment_reading, water_temp)\n"
                 "  - Historical sensor readings per zone per day (includes 30 days of pre-episode history)"
             ),
         }
@@ -508,6 +543,13 @@ class FishingGameEnv:
     # =========================================================================
     # Tool methods
     # =========================================================================
+
+    def _check_daily_conditions_blocked(self, query):
+        """Check if a SQL query references the daily_conditions table (hidden from agent)."""
+        if re.search(r'\bdaily_conditions\b', query, re.IGNORECASE):
+            return {"error": "Table 'daily_conditions' is not available. "
+                    "See db_schema for available tables."}
+        return None
 
     def check_weather_reports(self, query, max_results=3):
         """
@@ -577,6 +619,7 @@ class FishingGameEnv:
         """
         Read-only SQL against the visible database.
         Budget: 2 per day. Only SELECT/WITH allowed.
+        daily_conditions table is blocked.
         """
         if not self.ablation.get("query_fishing_log", True):
             return {"error": "query_fishing_log is disabled in this configuration"}
@@ -591,6 +634,11 @@ class FishingGameEnv:
         for kw in write_keywords:
             if kw in stripped:
                 return {"error": f"Write operation '{kw}' not allowed"}
+
+        # Block access to daily_conditions (hidden from agent)
+        blocked = self._check_daily_conditions_blocked(query)
+        if blocked:
+            return blocked
 
         self._budgets["query_fishing_log"] -= 1
         self._step_tool_usage.append("query_fishing_log")
@@ -607,6 +655,7 @@ class FishingGameEnv:
         """
         Read-only SQL against the visible database (maintenance_log + others).
         Budget: 2 per day. Only SELECT/WITH allowed.
+        daily_conditions table is blocked.
         """
         if not self.ablation.get("query_maintenance_log", True):
             return {"error": "query_maintenance_log is disabled in this configuration"}
@@ -621,6 +670,11 @@ class FishingGameEnv:
         for kw in write_keywords:
             if kw in stripped:
                 return {"error": f"Write operation '{kw}' not allowed"}
+
+        # Block access to daily_conditions (hidden from agent)
+        blocked = self._check_daily_conditions_blocked(query)
+        if blocked:
+            return blocked
 
         self._budgets["query_maintenance_log"] -= 1
         self._step_tool_usage.append("query_maintenance_log")
@@ -711,9 +765,10 @@ class FishingGameEnv:
         storm_zone_probs = params.get("storm_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25})
         p_equip = max(0.0, min(1.0, params.get("equip_failure_active", 0.2)))
         equip_zone_probs = params.get("equip_zone_probs", {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25})
+        p_tide_high = max(0.0, min(1.0, params.get("tide_high", 0.5)))
 
         # Build belief vector from marginals
-        belief = self._beliefs_to_vector(p_storm, storm_zone_probs, p_equip, equip_zone_probs)
+        belief = self._beliefs_to_vector(p_storm, storm_zone_probs, p_equip, equip_zone_probs, p_tide_high)
 
         # Compute expected reward for all allocations, return top 10
         results = []
@@ -733,16 +788,14 @@ class FishingGameEnv:
                 "storm_zone_probs": storm_zone_probs,
                 "equip_failure_active": p_equip,
                 "equip_zone_probs": equip_zone_probs,
+                "tide_high": p_tide_high,
             },
         }
 
-    def _beliefs_to_vector(self, p_storm, storm_zone_probs, p_equip, equip_zone_probs):
-        """Convert 10 marginal beliefs to 40-element belief vector under independence."""
-        wind_labels = ["N", "S", "E", "W"]
-        zone_to_wind = {v: k for k, v in self.cfg["wind_to_zone"].items()}
-
+    def _beliefs_to_vector(self, p_storm, storm_zone_probs, p_equip, equip_zone_probs, p_tide_high=0.5):
+        """Convert marginal beliefs to 80-element belief vector under independence."""
         belief = np.zeros(self.pomdp.n_states, dtype=np.float64)
-        for i, (storm, wind, equip) in enumerate(self.cfg["states"]):
+        for i, (storm, wind, equip, tide) in enumerate(self.cfg["states"]):
             # P(storm)
             p_s = p_storm if storm == 1 else (1.0 - p_storm)
 
@@ -768,7 +821,10 @@ class FishingGameEnv:
                 else:
                     p_e = p_equip * 0.25
 
-            belief[i] = p_s * p_w * p_e
+            # P(tide)
+            p_t = p_tide_high if tide == 1 else (1.0 - p_tide_high)
+
+            belief[i] = p_s * p_w * p_e * p_t
 
         total = belief.sum()
         if total > 0:
@@ -795,7 +851,8 @@ class FishingGameEnv:
         assume_storm_zone = params.get("assume_storm_zone", "A")
         assume_equip_failure = params.get("assume_equip_failure", False)
         assume_equip_zone = params.get("assume_equip_zone", "A")
-        strategy = params.get("strategy", {"A": 3, "B": 0, "C": 0, "D": 0})
+        assume_tide_high = params.get("assume_tide_high", False)
+        strategy = params.get("strategy", {"A": 10, "B": 0, "C": 0, "D": 0})
 
         projected_days = []
         cumulative = 0.0
@@ -817,7 +874,10 @@ class FishingGameEnv:
                 elif has_equip:
                     day_reward += self.cfg["danger_loss_equip_per_boat"] * boats
                 else:
-                    day_reward += self.cfg["safe_profit_per_boat"] * boats
+                    profit = self.cfg["safe_profit_per_boat"]
+                    if assume_tide_high:
+                        profit += self.cfg["tide_bonus"].get(1, 0)
+                    day_reward += profit * boats
 
             cumulative += day_reward
             projected_days.append({
@@ -837,7 +897,7 @@ class FishingGameEnv:
         sql_tools = {"query_fishing_log", "query_maintenance_log"}
         return bool(sql_tools & set(self._step_tool_usage))
 
-    # Internal accessors for baselines (no budget — sensors are free in v3)
+    # Internal accessors for baselines (no budget — sensors are free)
 
     def get_barometer(self):
         """Internal: read barometer. Already in step_observations."""
@@ -854,6 +914,10 @@ class FishingGameEnv:
     def get_maintenance_alerts(self):
         """Internal: read maintenance alerts dict. Already in step_observations."""
         return dict(self._available_maintenance_alerts)
+
+    def get_water_temp(self, zone):
+        """Internal: read water temperature. Already in step_observations."""
+        return float(self._available_water_temps[zone])
 
     # =========================================================================
     # Submit decisions — the ONLY action that advances the day
@@ -899,16 +963,16 @@ class FishingGameEnv:
             (self._day, self._current_sea_color, self._current_equip_indicator,
              alloc_json, reward, self._cumulative_reward),
         )
-        # Insert daily conditions (1 row per day)
-        storm, wind, equip = self._hidden_state
+        # Insert daily conditions (for oracle/evaluator — hidden from agent)
+        storm, wind, equip, tide = self._hidden_state
         storm_zone = self.cfg["wind_to_zone"][wind] if storm == 1 else None
         equip_zone = self.cfg["equip_to_zone"][equip]
         cur.execute(
             "INSERT INTO daily_conditions "
-            "(day, storm_active, storm_zone, equip_zone, barometer, sea_color) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            "(day, storm_active, storm_zone, equip_zone, barometer, sea_color, tide) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
             (self._day, storm, storm_zone, equip_zone,
-             round(float(self._available_barometer), 2), self._current_sea_color),
+             round(float(self._available_barometer), 2), self._current_sea_color, tide),
         )
         # Insert per-zone catch history
         for zone in self.cfg["zones"]:
@@ -919,14 +983,15 @@ class FishingGameEnv:
                     "INSERT INTO catch_history (day, zone, boats, reward) VALUES (?, ?, ?, ?)",
                     (self._day, zone, boats, zone_reward),
                 )
-        # Insert today's sensor readings into sensor_log
+        # Insert today's sensor readings into sensor_log (with water_temp)
         for zone in self.cfg["zones"]:
             cur.execute(
-                "INSERT INTO sensor_log (day, zone, buoy_reading, equipment_reading) "
-                "VALUES (?, ?, ?, ?)",
+                "INSERT INTO sensor_log (day, zone, buoy_reading, equipment_reading, water_temp) "
+                "VALUES (?, ?, ?, ?, ?)",
                 (self._day, zone,
                  round(float(self._available_buoys[zone]), 2),
-                 round(float(self._available_inspections[zone]), 2)),
+                 round(float(self._available_inspections[zone]), 2),
+                 round(float(self._available_water_temps[zone]), 2)),
             )
         self._db.commit()
 
@@ -941,6 +1006,7 @@ class FishingGameEnv:
             "day": self._day,
             "hidden_state_idx": self._hidden_state_idx,
             "hidden_state": self._hidden_state,
+            "sensor_zones": list(self._sensor_zones),
             "sea_color": self._current_sea_color,
             "equip_indicator": self._current_equip_indicator,
             "observations": step_obs,
@@ -989,7 +1055,12 @@ class FishingGameEnv:
         self._available_buoys = {z: self._sample_buoy(z) for z in self.cfg["zones"]}
         self._available_inspections = {z: self._sample_inspection(z) for z in self.cfg["zones"]}
         self._available_maintenance_alerts = self._sample_maintenance_alerts()
+        self._available_water_temps = {z: self._sample_water_temp(z) for z in self.cfg["zones"]}
         self._store_maintenance_alerts(self._available_maintenance_alerts)
+
+        # Select which zones report sensors this day
+        n_sensor_zones = self.cfg.get("sensor_zones_per_step", len(self.cfg["zones"]))
+        self._sensor_zones = sorted(self._rng.sample(self.cfg["zones"], n_sensor_zones))
 
         obs = self._make_observation_bundle()
         return {
@@ -1000,7 +1071,7 @@ class FishingGameEnv:
         }
 
     def _transition_hidden_state(self):
-        """Sample next hidden state from 40x40 transition matrix."""
+        """Sample next hidden state from 80x80 transition matrix."""
         row = self.pomdp.T[self._hidden_state_idx]
         self._hidden_state_idx = self._rng.choices(
             range(self.pomdp.n_states), weights=row.tolist(), k=1
@@ -1010,7 +1081,7 @@ class FishingGameEnv:
     def _get_all_available_observations(self):
         """
         Return all observations that COULD have been gathered this step
-        (for the evaluator's oracle computation). Tier 1 + Tier 2 = 15 obs.
+        (for the evaluator's oracle computation). Limited to sensor_zones.
         """
         return self._build_free_observations() + self._build_sql_discoverable_observations()
 

@@ -26,3 +26,6 @@ traces/
 # Claude Code
 .claude/
 2026-04-02-131647-implement-the-following-plan.txt
+tmp/
+replay/
+docs/

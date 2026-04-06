@@ -288,7 +288,14 @@ TOOL_SCHEMAS = [
                         "description": "Brief explanation of your decision",
                     },
                 },
-                "required": ["allocation", "storm_active"],
+                "required": [
+                    "allocation",
+                    "storm_active",
+                    "storm_zone_probs",
+                    "equip_failure_active",
+                    "equip_zone_probs",
+                    "tide_high",
+                ],
             },
         },
     },
@@ -339,12 +346,20 @@ The historical database contains 30 days of pre-season sensor and catch data.
 Each day, allocate 1-10 boats across the 4 zones. Example: {"A": 5, "B": 3, "C": 2, "D": 0}
 
 ## Required output
-Every turn MUST end with submit_decisions including your beliefs:
+Every turn MUST end with submit_decisions including your full beliefs:
 - storm_active: P(storm is active)
 - storm_zone_probs: {"A": p, "B": p, "C": p, "D": p} summing to 1
 - equip_failure_active: P(equipment is broken somewhere)
 - equip_zone_probs: {"A": p, "B": p, "C": p, "D": p} summing to 1
-- tide_high: P(tide is high) (optional)
+- tide_high: P(tide is high)
+
+Do not omit any belief fields. If you are uncertain, still provide explicit probabilities.
+If submit_decisions is missing any required belief field, the action will fail.
+
+## Tool discipline
+Use analyze_data when you need to compute, compare hypotheses, deconfound signals, estimate probabilities, or check whether an allocation is justified.
+Do not rely only on narrative reasoning when a short calculation would reduce uncertainty.
+When you submit, make sure your stated zone probabilities reflect your reasoning; do not leave them uniform unless you truly believe all zones are equally likely.
 """
 
 
@@ -451,15 +466,30 @@ def execute_tool_call(env, tool_name, tool_args):
         return json.dumps(result, indent=2), False
 
     elif tool_name == "submit_decisions":
-        allocation = tool_args.get("allocation", {"A": 1, "B": 0, "C": 0, "D": 0})
+        required_fields = [
+            "allocation",
+            "storm_active",
+            "storm_zone_probs",
+            "equip_failure_active",
+            "equip_zone_probs",
+            "tide_high",
+        ]
+        missing = [field for field in required_fields if field not in tool_args]
+        if missing:
+            return json.dumps({
+                "error": (
+                    "submit_decisions requires all belief fields. "
+                    f"Missing: {', '.join(missing)}"
+                )
+            }, indent=2), False
+
+        allocation = tool_args["allocation"]
         beliefs = {
-            "storm_active": tool_args.get("storm_active", 0.5),
-            "storm_zone_probs": tool_args.get("storm_zone_probs",
-                                              {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}),
-            "equip_failure_active": tool_args.get("equip_failure_active", 0.2),
-            "equip_zone_probs": tool_args.get("equip_zone_probs",
-                                              {"A": 0.25, "B": 0.25, "C": 0.25, "D": 0.25}),
-            "tide_high": tool_args.get("tide_high", 0.5),
+            "storm_active": tool_args["storm_active"],
+            "storm_zone_probs": tool_args["storm_zone_probs"],
+            "equip_failure_active": tool_args["equip_failure_active"],
+            "equip_zone_probs": tool_args["equip_zone_probs"],
+            "tide_high": tool_args["tide_high"],
         }
         result = env.submit_decisions(
             allocation=allocation,

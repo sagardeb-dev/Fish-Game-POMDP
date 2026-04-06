@@ -509,7 +509,7 @@
               "search_signals",
               "run_sql",
               "run_code",
-              "run_optimizer",  
+              "run_optimizer",
               "run_whatif",
               "submit_decisions"
             ]

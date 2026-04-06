@@ -77,9 +77,12 @@ Inspired by [NewtonBench](https://arxiv.org/abs/2503.02453) (ICLR 2026) and [Dis
 │  LLM Agents (require OpenAI API key):                                    │
 │  ├── LLMAgent (llm_agent.py)      — free-form tool-calling LLM          │
 │  │   └── GPTAgent (gpt_agent.py)  — OpenAI GPT integration              │
-│  └── LLMSolverAgent (llm_solver_agent.py)                                │
-│      — LLM estimates world model on day 1, solver does exact Bayes       │
-│      — Isolates model discovery from inference/planning                  │
+│  ├── LLMSolverAgent (llm_solver_agent.py)                                │
+│  │   — LLM estimates world model on day 1, solver does exact Bayes       │
+│  │   — Isolates model discovery from inference/planning                  │
+│  └── CodingAgent (coding_agent.py) [BUGGED]                              │
+│      — Agno framework + PythonTools for persistent code execution        │
+│      — Designed to write analysis code, but GPT-5.4 ignores Python REPL  │
 └──────────────────────────────────────────────────────────────────────────┘
         │                                               │
         │ episode trace                                 │ episode trace
@@ -150,6 +153,9 @@ Free-form tool-calling agent. The LLM receives observations, calls tools (SQL, a
 ### LLM+Solver (LLMSolverAgent)
 LLM estimates world model parameters on day 1 from raw historical data. The LLM receives the data + a blank parameter schema (field names only, no causal explanations). It must discover what the parameters mean from data patterns. A deterministic solver then runs exact Bayesian filtering with the LLM's estimated model for days 1-20. Isolates model discovery (LLM) from inference/planning (solver).
 
+### CodingAgent [BUGGED]
+Uses Agno framework with PythonTools (persistent Python REPL) + FishingGameTools. Designed to write statistical analysis code on day 1, store thresholds in Python variables, and compute risk scores numerically on days 2-20. Currently bugged: GPT-5.4 ignores the Python REPL entirely despite explicit prompting, falling back to SQL queries + natural language reasoning. Scores ~1069 (between NaivePattern and CausalLearner) but should score higher if the coding loop worked.
+
 ## Setup
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
@@ -182,12 +188,13 @@ Runs 5 baselines x 3 ablation configs x 10 seeds = 150 episodes (parallelized ac
 uv run python run_llm_benchmark.py
 ```
 
-Runs LLMAgent and LLM+Solver (GPT 5.4) on 5 seeds. Saves traces and updates `benchmark_results.md`.
+Runs LLMAgent, LLM+Solver, and CodingAgent (GPT 5.4) on 5 seeds. Saves traces and updates `benchmark_results.md`.
 
-### Run individual LLM+Solver episode
+### Run individual episodes
 
 ```bash
-uv run python run_llm_solver.py 42       # seed 42
+uv run python run_llm_solver.py 42       # LLM+Solver, seed 42
+uv run python run_coding_agent.py 42     # CodingAgent, seed 42
 ```
 
 ### Run tests
@@ -211,13 +218,15 @@ RL-environment/
 │   ├── llm_agent.py           # LLMAgent base class, tool schemas, system prompt
 │   ├── llm_solver_agent.py    # LLMSolverAgent — LLM discovers model, solver does Bayes
 │   ├── gpt_agent.py           # GPTAgent — OpenAI API integration
+│   ├── coding_agent.py        # CodingAgent — Agno + PythonTools [BUGGED]
 │   ├── runner.py              # Parallelized ablation suite runner with verification
 │   └── traced_runner.py       # TracedLLMAgent + LLM+Solver trace support
 ├── tests/
 │   └── test_fishing_game.py   # 118 tests
 ├── main.py                    # Entry point for baseline ablation suite
-├── run_llm_benchmark.py       # Run LLMAgent + LLM+Solver on 5 seeds
+├── run_llm_benchmark.py       # Run LLMAgent + LLM+Solver + CodingAgent on 5 seeds
 ├── run_llm_solver.py          # Run single LLM+Solver episode
+├── run_coding_agent.py        # Run single CodingAgent episode
 └── benchmark_results.md       # Latest benchmark results
 ```
 
@@ -254,24 +263,30 @@ The three gaps sum exactly to `oracle_reward - actual_reward` at every step (alg
 
 | Agent | Reward (mean) | Brier(S) | Brier(E) | Tool Gap | Inf Gap | Plan Gap |
 |---|---:|---:|---:|---:|---:|---:|
-| Random | 472.6 | 0.2500 | 0.3460 | 558.0 | 516.8 | 126.6 |
-| NaivePattern | 472.6 | 0.2068 | 0.2173 | 558.0 | 282.2 | 361.2 |
-| **LLMAgent (GPT 5.4)** | **720.0** | — | — | — | — | — |
-| **CausalLearner** | **1480.0** | **0.0685** | **0.1855** | **0.0** | **102.0** | **0.0** |
-| **LLM+Solver (GPT 5.4)** | **1524.0** | — | — | **0.0** | — | **0.0** |
-| CausalReasoner | 1582.0 | 0.0484 | 0.1817 | 0.0 | 0.0 | 0.0 |
-| Oracle | 1716.0 | 0.0000 | 0.0000 | 0.0 | -134.0 | 0.0 |
+| Random | 472.6 | 0.2500 | 0.3460 | 382.8 | 470.0 | 126.6 |
+| NaivePattern | 435.4 | 0.2219 | 0.2485 | 382.8 | 507.4 | 126.4 |
+| **LLMAgent (GPT 5.4)** | **663** | **0.0870** | **0.2280** | **0.0** | — | — |
+| **CodingAgent (GPT 5.4)** | **1069** | — | — | — | — | — |
+| **LLM+Solver (GPT 5.4)** | **1124.0** | **0.1870** | **0.3093** | **0.0** | **392.0** | **0.0** |
+| **CausalLearner** | **1324.0** | **0.1331** | **0.2152** | **0.0** | **192.0** | **0.0** |
+| CausalReasoner | 1516.0 | 0.1236 | 0.2104 | 0.0 | 0.0 | 0.0 |
+| Oracle | 1716.0 | 0.0000 | 0.0000 | 0.0 | -200.0 | 0.0 |
+
+*LLMAgent and CodingAgent results are partial (3/5 and 1/5 seeds respectively).*
 
 **Key observations:**
 
-- **LLM+Solver (1524) > CausalLearner (1480)**: GPT 5.4's parameter estimation is competitive with the hardcoded statistical pipeline, particularly for buoy/storm parameters (2-4% error).
-- **LLM+Solver (1524) < CausalReasoner (1582)**: The LLM's estimated model is imperfect — equipment age confound and maintenance rates have 25-75% error. The inference gap captures this.
-- **LLMAgent (720) << LLM+Solver (1524)**: Separating model discovery from inference/planning doubles performance. The free-form LLM struggles to maintain consistent beliefs and do in-context Bayes.
+- **CausalLearner (1324) > LLM+Solver (1124)**: With tightened distributions, the LLM's parameter estimation errors matter more. Equipment params are frequently swapped (broken/ok means confused), causing large inference gaps.
+- **LLM+Solver (1124) < CausalReasoner (1516)**: The inference gap (392.0) is entirely from imperfect LLM parameter estimates. Planning gap = 0 confirms the solver acts optimally on its beliefs.
+- **CodingAgent (1069) [BUGGED]**: Uses Agno framework with PythonTools, but GPT-5.4 ignores the Python REPL entirely — never calls `run_python_code` despite explicit prompting. Falls back to SQL + natural language reasoning. Should score higher if the coding loop worked.
+- **LLMAgent (663) << LLM+Solver (1124)**: Free-form LLM struggles with consistent beliefs and in-context Bayes. Separating model discovery from inference nearly doubles performance.
 - **Planning gap = 0** for all Bayesian agents (CausalLearner, LLM+Solver, CausalReasoner): exact solver always acts optimally on its beliefs.
-- **Random ≈ NaivePattern (473)**: With only 2 sensor zones visible per day, NaivePattern's heuristics become unreliable. Both are far below agents that use SQL for causal discovery.
+- **Random (473) ≈ NaivePattern (435)**: With only 2 sensor zones visible per day, NaivePattern's heuristics become unreliable.
 
 ### Benchmark Ladder
 
 ```
-Random (473) ≈ NaivePattern (473) << LLMAgent (720) << CausalLearner (1480) ≈ LLM+Solver (1524) < CausalReasoner (1582) < Oracle (1716)
+Random (473) ≈ NaivePattern (435) << LLMAgent (663) < CodingAgent* (1069) < LLM+Solver (1124) < CausalLearner (1324) < CausalReasoner (1516) < Oracle (1716)
+
+* CodingAgent is bugged — does not use Python REPL
 ```

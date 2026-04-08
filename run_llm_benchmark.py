@@ -1,6 +1,6 @@
 """
 Run LLMAgent, LLM+Solver, and CodingAgent (GPT 5.4) on 5 seeds.
-Prints results table with full metrics and updates benchmark_results.md.
+Prints results table with full metrics and updates docs/reports/benchmark_results.md.
 
 Usage:
     uv run python run_llm_benchmark.py
@@ -22,6 +22,10 @@ from fishing_game.llm_solver_agent import LLMSolverAgent
 from fishing_game.coding_agent import CodingAgent
 from fishing_game.traced_runner import run_traced_episode, run_llm_solver_episode
 
+ROOT = Path(__file__).resolve().parent
+TRACES_DIR = ROOT / "traces"
+BENCHMARK_RESULTS_PATH = ROOT / "docs" / "reports" / "benchmark_results.md"
+
 # Load .env
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -34,7 +38,7 @@ def run_llm_agent_episode(seed):
     agent_cls = lambda config=None: GPTAgent(model=MODEL, config=config)
     output = run_traced_episode(
         agent_cls=agent_cls, seed=seed, config=CONFIG,
-        save_path=f"traces/llm_agent_{MODEL.replace('.','')}_seed{seed}.json",
+        save_path=str(TRACES_DIR / f"llm_agent_{MODEL.replace('.','')}_seed{seed}.json"),
     )
     return output["evaluation"]
 
@@ -50,7 +54,7 @@ def run_llm_solver_ep(seed):
     agent = LLMSolverAgent(llm_fn=gpt_fn, config=CONFIG)
     result = run_llm_solver_episode(
         agent, seed=seed, config=CONFIG,
-        save_path=f"traces/llm_solver_{MODEL.replace('.','')}_seed{seed}.json",
+        save_path=str(TRACES_DIR / f"llm_solver_{MODEL.replace('.','')}_seed{seed}.json"),
     )
     return result
 
@@ -72,7 +76,7 @@ def run_coding_agent_ep(seed):
     # Save trace
     trace = env.get_trace()
     model_slug = MODEL.replace(".", "")
-    save_path = Path(f"traces/coding_agent_{model_slug}_seed{seed}.json")
+    save_path = TRACES_DIR / f"coding_agent_{model_slug}_seed{seed}.json"
     save_path.parent.mkdir(parents=True, exist_ok=True)
     with open(save_path, "w") as f:
         json.dump(trace, f, indent=2, default=str)
@@ -161,13 +165,13 @@ def main():
         per_seed = "  ".join(f"s{s}={r:.0f}" for s, r in zip(SEEDS, rewards))
         print(f"{name:<16} {np.mean(rewards):>8.1f} {np.std(rewards):>5.1f}  {per_seed}")
 
-    # Update benchmark_results.md
+    # Update docs/reports/benchmark_results.md
     _update_benchmark_md(results)
 
 
 def _update_benchmark_md(results):
-    """Update the LLM section of benchmark_results.md."""
-    md_path = Path("benchmark_results.md")
+    """Update the LLM section of docs/reports/benchmark_results.md."""
+    md_path = BENCHMARK_RESULTS_PATH
     if not md_path.exists():
         return
 

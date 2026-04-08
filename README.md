@@ -188,7 +188,7 @@ Runs 5 baselines x 3 ablation configs x 10 seeds = 150 episodes (parallelized ac
 uv run python run_llm_benchmark.py
 ```
 
-Runs LLMAgent, LLM+Solver, and CodingAgent (GPT 5.4) on 5 seeds. Saves traces and updates `benchmark_results.md`.
+Runs LLMAgent, LLM+Solver, and CodingAgent (GPT 5.4) on 5 seeds. Saves traces and updates `docs/reports/benchmark_results.md`.
 
 ### Run individual episodes
 
@@ -205,7 +205,23 @@ uv run pytest tests/test_fishing_game.py -v
 
 118 tests covering config, POMDP, simulator, evaluator, baselines, ablation suite, and LLM+Solver.
 
+### Advanced / research scripts
+
+Specialized one-off runners now live under `scripts/` to keep the repo root smaller.
+
+```bash
+uv run python -m scripts.run_curriculum_baselines
+uv run python -m scripts.run_llm_solver_curriculum
+uv run python -m scripts.run_llm_solver_curriculum_mock
+```
+
 ## Project Structure
+
+Core layout has been cleaned up since the original tree below:
+- Specialized runners now live under `scripts/`
+- Generated and benchmark markdown now lives under `docs/reports/`
+- Investigation notes now live under `docs/notes/`
+- `world_gen/` is the active world generator package
 
 ```
 RL-environment/
@@ -290,3 +306,38 @@ Random (473) ≈ NaivePattern (435) << LLMAgent (663) < CodingAgent* (1069) < LL
 
 * CodingAgent is bugged — does not use Python REPL
 ```
+
+---
+
+## Curriculum Learning Results (5 levels, World Generator)
+
+**Setup**: Dynamically generated configs using `world_knobs()` curriculum function, testing agent robustness to varying observability/noise/causal structure.
+
+### Key Result: Curriculum Scaling
+
+| Agent | L0.0 (Trivial) | L0.25 (Easy) | L0.5 (Medium) | L0.75 (Hard) | L1.0 (Nightmare) | Easy→Hard Delta |
+|-------|--------|--------|---------|---------|----------|----------|
+| **Random** | 391.0 | 356.0 | 317.3 | 378.7 | -185.0 | -576 |
+| **NaivePattern** | 721.7 | 400.0 | 168.0 | 498.3 | 160.0 | -562 |
+| **CausalLearner** | 1136.3 | 769.3 | 726.3 | 537.7 | 68.0 | -1068 |
+| **CausalReasoner** | 1127.0 | 819.3 | 1222.0 | 685.7 | 279.3 | -848 |
+| **LLM+Solver** | 818.5 | 203.5 | 125.0 | 201.0 | -319.0 | -1138 |
+| **Oracle** | 1236.7 | 1237.7 | 1425.7 | 1320.7 | 1534.3 | +297 |
+
+### Key Findings
+
+1. **Oracle Improves with Difficulty (+297 points)**: Full-state observation means richer causal structure is beneficial, validating that the curriculum creates **causally complex** problems, not random noise.
+
+2. **CausalReasoner is Most Robust (-848 delta)**: Explicit causal reasoning adapts to curriculum difficulty better than learning-based approaches. Maintains 279-1127 reward across all levels.
+
+3. **CausalLearner Collapses at Hard Levels (-1068 delta)**: Learning-based parameter estimation fails when curriculum difficulty exceeds training data diversity (from 1136 at L0.0 → 68 at L1.0).
+
+4. **LLM+Solver Fails Even on Trivial Level (818.5 at L0.0)**: One-shot parameter discovery from 30-day history cannot reliably estimate 50+ POMDP parameters, creating 193-point inference gap even on easy problems. Gap grows to 860 at L0.5 (worst case).
+
+5. **Seed-Dependent Variance Reveals Information Bottleneck**: LLM+Solver shows 896-point std at L0.5 (seed 42 fails catastrophically, seed 123 recovers), vs 121.9 for CausalReasoner. This confirms the bottleneck is **information availability**, not prompt quality (improved prompt with 1,400+ words did not solve it).
+
+**Conclusion**: Parameter discovery is fundamentally limited by observability. Agents must either (a) learn from sustained outcome feedback (CausalLearner, 10k episodes) or (b) reason causally with explicit structure (CausalReasoner), not attempt one-shot estimation.
+
+See [COMPREHENSIVE_BENCHMARK_REPORT.md](reports/2026-04-curriculum/COMPREHENSIVE_BENCHMARK_REPORT.md) for full statistical analysis and [LLM_SOLVER_ANALYSIS.md](reports/2026-04-curriculum/LLM_SOLVER_ANALYSIS.md) for LLM+Solver diagnostic report.
+
+---

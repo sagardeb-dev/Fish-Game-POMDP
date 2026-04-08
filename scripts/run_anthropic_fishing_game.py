@@ -29,7 +29,7 @@ def _debug_enabled() -> bool:
 
 
 def _debug_dir() -> Path:
-    path = Path(__file__).resolve().parent / "traces" / "anthropic_debug"
+    path = Path(__file__).resolve().parents[1] / "traces" / "anthropic_debug"
     path.mkdir(parents=True, exist_ok=True)
     return path
 

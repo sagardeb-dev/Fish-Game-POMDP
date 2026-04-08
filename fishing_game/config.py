@@ -251,6 +251,7 @@ EASY_CONFIG = {
 
     # --- Episode parameters ---
     "episode_length": 20,
+    "historical_days": 30,
     "max_boats": 10,
     "zones": ["A", "B", "C", "D"],
 
@@ -405,30 +406,15 @@ BENCHMARK_CONFIG = {
     # Forces agents to rely on transition model between steps.
     "sensor_zones_per_step": 2,
 
-    # Tighter observation distributions (0.8-1.5 sigma separation).
-    # Makes parameter accuracy matter — wrong params flip actions ~38% of days.
-    "barometer_params": {
-        0: {"mean": 1010.0, "std": 5.0},
-        1: {"mean": 1005.0, "std": 5.0},       # gap=5, 1.0σ (was gap=8, 1.3σ)
-    },
-    "buoy_params": {
-        "normal":         {"mean": 1.5, "std": 0.8},
-        "source":         {"mean": 2.7, "std": 0.8},   # 1.5σ from normal (was 2.5σ)
-        "propagated":     {"mean": 2.1, "std": 0.8},   # 0.8σ from normal (was 1.4σ)
-        "far_propagated": {"mean": 1.7, "std": 0.8},   # near normal (was 1.0σ)
-    },
-    "equipment_inspection_params": {
-        "broken": {"mean": 5.5, "std": 1.5},   # 1.7σ from ok (was 2.3σ)
-        "ok":     {"mean": 3.0, "std": 1.5},
-    },
-    # Higher false positive rates (realistic: real-world storm FP is 21-70%)
+    # Revert sea_color and equip_indicator to HARD_CONFIG levels.
+    # Current BENCHMARK raised these false positive rates unnecessarily.
     "sea_color_probs": {
-        0: {"green": 0.50, "murky": 0.35, "dark": 0.15},  # dark|no_storm up from 0.10
-        1: {"green": 0.15, "murky": 0.35, "dark": 0.50},  # green|storm up from 0.10
+        0: {"green": 0.55, "murky": 0.35, "dark": 0.10},
+        1: {"green": 0.10, "murky": 0.45, "dark": 0.45},
     },
     "equip_indicator_probs": {
-        0: {"normal": 0.55, "warning": 0.30, "critical": 0.15},  # critical|ok up from 0.10
-        1: {"normal": 0.25, "warning": 0.35, "critical": 0.40},  # normal|broken up from 0.20
+        0: {"normal": 0.60, "warning": 0.30, "critical": 0.10},
+        1: {"normal": 0.20, "warning": 0.40, "critical": 0.40},
     },
 }
 

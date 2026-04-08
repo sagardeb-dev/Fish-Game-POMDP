@@ -1,9 +1,12 @@
 """Run GPT agent on Fishing Game v4 with full tracing."""
 
 import sys
+from pathlib import Path
 from fishing_game.config import CONFIG, HARD_CONFIG
 from fishing_game.gpt_agent import GPTAgent
 from fishing_game.traced_runner import run_traced_episode, print_traced_episode
+
+TRACES_DIR = Path(__file__).resolve().parents[1] / "traces"
 
 
 if __name__ == "__main__":
@@ -16,7 +19,7 @@ if __name__ == "__main__":
 
     model_slug = model.replace("/", "_").replace(" ", "_")
     difficulty = "hard" if mode == "hard" else "easy"
-    save_path = f"traces/{model_slug}_v4_{difficulty}_seed{seed}.json"
+    save_path = str(TRACES_DIR / f"{model_slug}_v4_{difficulty}_seed{seed}.json")
 
     print(f"Running {model} on Fishing Game v4 ({mode} mode, seed={seed})...")
     print()

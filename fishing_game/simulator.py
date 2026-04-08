@@ -71,7 +71,7 @@ class FishingGameEnv:
         self._db = sqlite3.connect(":memory:")
         self._db.row_factory = sqlite3.Row
         self._init_db()
-        self._generate_historical_data()
+        self._generate_historical_data(n_days=self.cfg.get("historical_days", 30))
 
         # Tool budgets for current day
         self._reset_daily_budgets()
@@ -502,6 +502,7 @@ class FishingGameEnv:
         available_tools = [t for t in self.cfg["tool_budgets"] if self.ablation.get(t, True)]
         budget = {t: self._budgets[t] for t in available_tools}
         sz = self._sensor_zones
+        historical_days = self.cfg.get("historical_days", 30)
 
         return {
             "day": self._day,
@@ -532,11 +533,11 @@ class FishingGameEnv:
                 "weather_signals (signal_id, day, source_type, report_type, headline, body)\n"
                 "  - Weather and equipment intelligence reports (report_type: 'weather' or 'equipment')\n\n"
                 "catch_history (day, zone, boats, reward)\n"
-                "  - Historical catch outcomes by zone (includes 30 days of pre-episode history)\n\n"
+                f"  - Historical catch outcomes by zone (includes {historical_days} days of pre-episode history)\n\n"
                 "maintenance_log (day, zone, alerts)\n"
-                "  - Maintenance alert counts per zone per day (includes 30 days of pre-episode history)\n\n"
+                f"  - Maintenance alert counts per zone per day (includes {historical_days} days of pre-episode history)\n\n"
                 "sensor_log (day, zone, buoy_reading, equipment_reading, water_temp)\n"
-                "  - Historical sensor readings per zone per day (includes 30 days of pre-episode history)"
+                f"  - Historical sensor readings per zone per day (includes {historical_days} days of pre-episode history)"
             ),
         }
 

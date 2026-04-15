@@ -1,4 +1,4 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
 build/
@@ -13,19 +13,32 @@ wheels/
 .env
 .env.*
 
-# Traces (generated output, large JSON files)
+# Generated output
 traces/
 
-# Test / IDE caches
+# Caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# IDE
 .vscode/
 .idea/
 
 # Claude Code
 .claude/
-2026-04-02-131647-implement-the-following-plan.txt
+
+# Non-code directories (docs, reports, research kept locally, not in git)
+archive/
+docs/
+reports/
+research/
 tmp/
 replay/
-docs/
+tests/
+scripts/
+
+# Misc
+uv.lock
+.python-version
+*.txt

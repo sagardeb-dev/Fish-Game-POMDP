@@ -1,0 +1,1 @@
+"""World generation demo entrypoints."""

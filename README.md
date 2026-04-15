@@ -2,159 +2,81 @@
 
 A POMDP-based benchmark for evaluating LLM agent capabilities in **causal discovery**, **tool use**, **Bayesian inference**, and **decision-making under uncertainty**. The agent manages a fishing fleet across 4 zones over a 20-day season, facing hidden risks (storms, equipment failures, tide) that must be discovered through database analysis — not told in the prompt.
 
-Inspired by [NewtonBench](https://arxiv.org/abs/2503.02453) (ICLR 2026) and [DiscoveryBench](https://arxiv.org/abs/2407.01725) — agents must discover hidden causal structure through data, not instruction-following.
+Inspired by [NewtonBench](https://arxiv.org/abs/2503.02453) (ICLR 2026) and [DiscoveryBench](https://arxiv.org/abs/2407.01725).
 
 ## Architecture
 
 ```
-                          ┌─────────────────────────────────────┐
-                          │         Hidden Generative Model      │
-                          │  80 states = 2(storm) × 4(wind)     │
-                          │       × 5(equip_failure) × 2(tide)  │
-                          │                                      │
-                          │  config.py: BENCHMARK_CONFIG         │
-                          │  pomdp.py:  FishingPOMDP             │
-                          └──────────┬────────────┬─────────────┘
-                                     │            │
-                          transitions│            │observations
-                          T(s'|s)    │            │O(o|s)
-                                     ▼            ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                     FishingGameEnv  (simulator.py)                       │
-│                                                                          │
-│  reset(seed) ──► _init_db() ──► _generate_historical_data()             │
-│                        │                                                 │
-│                        ▼                                                 │
-│           ┌─────────────────────────────────┐                            │
-│           │     SQLite Episode Database      │                            │
-│           │                                  │                            │
-│           │  catch_history (30 days)         │  Historical data for       │
-│           │  sensor_log (buoy, equip, temp)  │  causal discovery.         │
-│           │  maintenance_log (alerts)        │  All 4 zones, 30 days.     │
-│           │  weather_signals                 │                            │
-│           │  daily_log (current season)      │                            │
-│           │  daily_conditions (HIDDEN)       │  Blocked from agent SQL.   │
-│           └─────────────────────────────────┘                            │
-│                                                                          │
-│  Sensor Zone Subsampling (BENCHMARK_CONFIG):                             │
-│  Only 2 of 4 zones report sensors each day (randomly selected).          │
-│  Forces agents to rely on transition model between steps.                │
-│                                                                          │
-│  Observation Tiers:                                                      │
-│  ┌─────────────────────────────────┬────────────────────────────────┐    │
-│  │ TIER 1 — Free                   │ TIER 2 — SQL-Discoverable      │    │
-│  │                                 │                                │    │
-│  │  sea_color    (storm signal)    │  buoy_readings   (storm)       │    │
-│  │  equip_indicator (equip signal) │  equip_readings  (equip)       │    │
-│  │  barometer    (storm signal)    │                                │    │
-│  │  maintenance_alerts (equip)     │  Promoted to agent's trace     │    │
-│  │  water_temp   (tide + confound) │  only if SQL tools were used   │    │
-│  │                                 │  this step                     │    │
-│  │  (only for 2 sensor zones/day)  │  (only for 2 sensor zones/day) │    │
-│  └─────────────────────────────────┴────────────────────────────────┘    │
-│                                                                          │
-│  Budget-Gated Tools (1/day each in BENCHMARK_CONFIG):                    │
-│  check_weather_reports, check_equipment_reports,                         │
-│  query_fishing_log (SQL), query_maintenance_log (SQL),                   │
-│  analyze_data (Python sandbox), evaluate_options, forecast_scenario      │
-│                                                                          │
-│  submit_decisions(allocation, beliefs, reasoning)  ──►  advances day     │
-└──────────────────────────────────────────────────────────────────────────┘
-        │                                               ▲
-        │ observation bundle                            │ tool calls +
-        │ + reward                                      │ submit_decisions
-        ▼                                               │
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           Agent Layer                                    │
-│                                                                          │
-│  Baselines (baselines.py) — no API key needed:                           │
-│  ├── RandomAgent          — random zone, no tools                        │
-│  ├── NaivePatternMatcher  — falls for all causal traps                   │
-│  ├── CausalLearner        — learns params from DB via SQL + statistics   │
-│  ├── CausalReasoner       — true params + exact Bayesian filtering       │
-│  └── OracleAgent          — reads hidden state (upper bound)             │
-│                                                                          │
-│  LLM Agents (require OpenAI API key):                                    │
-│  ├── LLMAgent (llm_agent.py)      — free-form tool-calling LLM          │
-│  │   └── GPTAgent (gpt_agent.py)  — OpenAI GPT integration              │
-│  ├── LLMSolverAgent (llm_solver_agent.py)                                │
-│  │   — LLM estimates world model on day 1, solver does exact Bayes       │
-│  │   — Isolates model discovery from inference/planning                  │
-│  └── CodingAgent (coding_agent.py) [BUGGED]                              │
-│      — Agno framework + PythonTools for persistent code execution        │
-│      — Designed to write analysis code, but GPT-5.4 ignores Python REPL  │
-└──────────────────────────────────────────────────────────────────────────┘
-        │                                               │
-        │ episode trace                                 │ episode trace
-        ▼                                               ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                    Evaluator  (evaluator.py)                             │
-│                                                                          │
-│  3-Way Cost Decomposition (algebraic identity, holds every step):       │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  oracle_reward - actual_reward =                                   │  │
-│  │      tool_use_gap    (oracle - retrieved: did agent gather info?)  │  │
-│  │    + inference_gap   (retrieved - belief:  did agent reason well?) │  │
-│  │    + planning_gap    (belief - actual:     did agent act on it?)   │  │
-│  └────────────────────────────────────────────────────────────────────┘  │
-│                                                                          │
-│  Episode Metrics:                                                        │
-│  total_reward, mean_brier_{storm,equip}, detection_lag,                 │
-│  total_{tool_use,inference,planning}_gap, tool_usage_counts             │
-└──────────────────────────────────────────────────────────────────────────┘
+                          +-------------------------------------+
+                          |         Hidden Generative Model      |
+                          |  80 states = 2(storm) x 4(wind)     |
+                          |       x 5(equip_failure) x 2(tide)  |
+                          +------------------+------------------+
+                                             |
+                          transitions T(s'|s) + observations O(o|s)
+                                             |
++--------------------------------------------------------------------------+
+|                     FishingGameEnv  (simulator.py)                        |
+|                                                                          |
+|  SQLite Episode Database:                                                |
+|    catch_history, sensor_log, maintenance_log (30 days historical)       |
+|    daily_conditions (HIDDEN - blocked from agent SQL)                    |
+|                                                                          |
+|  Sensor Zone Subsampling:                                                |
+|    Only 2 of 4 zones report sensors each day (randomly selected).        |
+|                                                                          |
+|  Observation Tiers:                                                      |
+|    Tier 1 (free): sea_color, equip_indicator, barometer,                 |
+|                   maintenance_alerts, water_temp                         |
+|    Tier 2 (SQL):  buoy_readings, equip_readings                         |
+|                   (promoted only if SQL tools were used this step)       |
+|                                                                          |
+|  Budget-Gated Tools (1/day each):                                        |
+|    check_weather_reports, check_equipment_reports,                        |
+|    query_fishing_log, query_maintenance_log,                             |
+|    analyze_data, evaluate_options, forecast_scenario                     |
++--------------------------------------------------------------------------+
+         |                                              ^
+         | observation + reward                         | tool calls + submit
+         v                                              |
++--------------------------------------------------------------------------+
+|                           Agent Layer                                    |
+|                                                                          |
+|  Baselines (no API key):                                                 |
+|    RandomAgent, NaivePatternMatcher, CausalLearner,                      |
+|    CausalReasoner, OracleAgent                                           |
+|                                                                          |
+|  LLM Agents (require OpenAI API key):                                    |
+|    LLMAgent, LLM+Solver, CodingAgent                                    |
++--------------------------------------------------------------------------+
+         |
+         v
++--------------------------------------------------------------------------+
+|                    Evaluator                                             |
+|                                                                          |
+|  3-Way Cost Decomposition (algebraic identity):                          |
+|    oracle - actual = tool_use_gap + inference_gap + planning_gap         |
++--------------------------------------------------------------------------+
 ```
 
 ### Turn Sequence (each of 20 days)
 
-```
-1. Env transitions hidden state:  s_t → s_{t+1}  via T(s'|s)
-2. Env selects 2 random sensor zones for the day
-3. Env emits observations + weather/equipment signals into DB
-4. Agent receives observation bundle (Tier 1 sensors for 2 zones + metadata)
-5. Agent calls tools (SQL queries, reports, analysis) — day does NOT advance
-6. Agent calls submit_decisions(allocation, beliefs, reasoning) — day advances
-7. Env computes reward, updates DB, returns next observation
-```
+1. Env transitions hidden state via T(s'|s)
+2. Env selects 2 random sensor zones
+3. Env emits observations into DB
+4. Agent receives observation bundle
+5. Agent calls tools (SQL, reports, analysis) -- day does NOT advance
+6. Agent calls submit_decisions -- day advances
+7. Env computes reward, returns next observation
 
 ### Causal Traps (discoverable, not told)
 
-```
-Trap 1: Wave Propagation               Trap 2: Age-Confounded Equipment
-
-  Zones form a ring: A─B─C─D─A           Zone ages: A=25yr B=15yr C=5yr D=2yr
-
-  Storm in zone X causes elevated         Old zones always show high equip
-  buoy readings in ADJACENT zones,        readings and maintenance alerts
-  not just the source zone.               regardless of actual failure.
-
-Trap 3: Fish Abundance Bonus            Trap 4: Water Temperature Confound
-
-  Zones adjacent to storm get +3/boat     Zone age offsets water temp readings.
-  bonus (storm currents bring fish).      Zone A always reads warm, not because
-  Simpson's Paradox: storm-adjacent       of tide. Agent must subtract zone
-  zones look profitable overall, but      offset to correctly infer tide state.
-  only if the storm isn't IN that zone.
-```
-
-## Agent Descriptions
-
-### CausalLearner
-Discovers POMDP parameters from the 30-day historical database via 2 SQL queries on day 1. Classifies historical days by reward values to identify storm/equipment/tide states, then estimates buoy distributions, equipment age offsets, maintenance Poisson rates, water temperature parameters, and transition matrices. Runs exact Bayesian filtering with estimated (imperfect) parameters for days 1-20.
-
-### CausalReasoner
-Has the true POMDP parameters hardcoded. Runs exact Bayesian filtering (predict → belief_update → optimal_action) with correct causal likelihoods. Uses SQL to unlock Tier 2 observations. Near-oracle performance.
-
-### OracleAgent
-Reads the hidden state directly (cheats). Picks the optimal allocation considering fish abundance bonus and tide bonus. Submits exact beliefs (Brier = 0). Upper bound on performance.
-
-### LLMAgent
-Free-form tool-calling agent. The LLM receives observations, calls tools (SQL, analysis, reports), and submits decisions. Must discover the causal structure, maintain beliefs, do inference, and plan — all in-context. No separation of concerns.
-
-### LLM+Solver (LLMSolverAgent)
-LLM estimates world model parameters on day 1 from raw historical data. The LLM receives the data + a blank parameter schema (field names only, no causal explanations). It must discover what the parameters mean from data patterns. A deterministic solver then runs exact Bayesian filtering with the LLM's estimated model for days 1-20. Isolates model discovery (LLM) from inference/planning (solver).
-
-### CodingAgent [BUGGED]
-Uses Agno framework with PythonTools (persistent Python REPL) + FishingGameTools. Designed to write statistical analysis code on day 1, store thresholds in Python variables, and compute risk scores numerically on days 2-20. Currently bugged: GPT-5.4 ignores the Python REPL entirely despite explicit prompting, falling back to SQL queries + natural language reasoning. Scores ~1069 (between NaivePattern and CausalLearner) but should score higher if the coding loop worked.
+| Trap | Mechanism |
+|---|---|
+| Wave Propagation | Storm in zone X elevates buoy readings in adjacent zones, not just the source |
+| Age-Confounded Equipment | Old zones (A=25yr) always show high equip readings regardless of failure |
+| Fish Abundance Bonus | Zones adjacent to storm get +3/boat (Simpson's Paradox) |
+| Water Temp Confound | Zone age offsets water temp; must subtract offset to infer tide |
 
 ## Setup
 
@@ -177,98 +99,77 @@ OPENAI_API_KEY=sk-...
 ### Run baseline ablation suite (no API key needed)
 
 ```bash
-uv run python main.py
+python -m scripts.run_baselines
 ```
-
-Runs 5 baselines x 3 ablation configs x 10 seeds = 150 episodes (parallelized across CPU cores). Verifies decomposition identity, baseline ordering, and tool use gaps.
 
 ### Run LLM benchmark (requires OpenAI API key)
 
 ```bash
-uv run python run_llm_benchmark.py
+python -m scripts.run_llm_benchmark
 ```
-
-Runs LLMAgent, LLM+Solver, and CodingAgent (GPT 5.4) on 5 seeds. Saves traces and updates `docs/reports/benchmark_results.md`.
 
 ### Run individual episodes
 
 ```bash
-uv run python run_llm_solver.py 42       # LLM+Solver, seed 42
-uv run python run_coding_agent.py 42     # CodingAgent, seed 42
+python -m scripts.run_llm_solver 42
+python -m scripts.run_coding_agent 42
+```
+
+### Run world generator demos
+
+```bash
+python -m world_gen.demo_pipeline --level 0.5 --seed 42 --episodes 2 --agents random reasoner oracle
+python -m world_gen.demo_generate --level 0.8 --seed 42 --d-prime 1.8
 ```
 
 ### Run tests
 
 ```bash
-uv run pytest tests/test_fishing_game.py -v
-```
-
-118 tests covering config, POMDP, simulator, evaluator, baselines, ablation suite, and LLM+Solver.
-
-### Advanced / research scripts
-
-Specialized one-off runners now live under `scripts/` to keep the repo root smaller.
-
-```bash
-uv run python -m scripts.run_curriculum_baselines
-uv run python -m scripts.run_llm_solver_curriculum
-uv run python -m scripts.run_llm_solver_curriculum_mock
+python -m scripts.run_tests
+python -m scripts.run_tests tests/unit/ -q
+python -m scripts.run_tests tests/integration/ -q
 ```
 
 ## Project Structure
 
-Core layout has been cleaned up since the original tree below:
-- Specialized runners now live under `scripts/`
-- Generated and benchmark markdown now lives under `docs/reports/`
-- Investigation notes now live under `docs/notes/`
-- `world_gen/` is the active world generator package
-
 ```
 RL-environment/
-├── fishing_game/
-│   ├── config.py              # EASY_CONFIG, HARD_CONFIG, BENCHMARK_CONFIG (80 states)
-│   ├── simulator.py           # FishingGameEnv — SQLite DB, tools, sensor zone subsampling
-│   ├── pomdp.py               # FishingPOMDP — exact Bayesian belief updates, optimal actions
-│   ├── evaluator.py           # Evaluator — 3-way cost decomposition, Brier scores
-│   ├── baselines.py           # 5 baselines: Random, NaivePattern, CausalLearner, CausalReasoner, Oracle
-│   ├── llm_agent.py           # LLMAgent base class, tool schemas, system prompt
-│   ├── llm_solver_agent.py    # LLMSolverAgent — LLM discovers model, solver does Bayes
-│   ├── gpt_agent.py           # GPTAgent — OpenAI API integration
-│   ├── coding_agent.py        # CodingAgent — Agno + PythonTools [BUGGED]
-│   ├── runner.py              # Parallelized ablation suite runner with verification
-│   └── traced_runner.py       # TracedLLMAgent + LLM+Solver trace support
-├── tests/
-│   └── test_fishing_game.py   # 118 tests
-├── main.py                    # Entry point for baseline ablation suite
-├── run_llm_benchmark.py       # Run LLMAgent + LLM+Solver + CodingAgent on 5 seeds
-├── run_llm_solver.py          # Run single LLM+Solver episode
-├── run_coding_agent.py        # Run single CodingAgent episode
-└── benchmark_results.md       # Latest benchmark results
+  src/
+    fishing_game/
+      environment/    config, simulator, pomdp, evaluator, contracts
+      agents/         RandomAgent, CausalLearner, LLMAgent, LLM+Solver, etc.
+      runners/        ablation suite runner, traced LLM runner
+      prompts/        extracted prompt text for LLM agents
+    world_gen/
+      core/           knobs, generator, validator
+      demos/          demo_generate, demo_pipeline
+  scripts/            canonical runnable entrypoints
+  tests/
+    unit/             fishing_game and world_gen unit tests
+    integration/      end-to-end generator + demo smoke tests
 ```
 
 ## Configs
 
-| Parameter | EASY_CONFIG | HARD_CONFIG | BENCHMARK_CONFIG |
+| Parameter | EASY | HARD | BENCHMARK |
 |---|---|---|---|
 | States | 80 | 80 | 80 |
-| Sensor zones/day | 4 (all) | 4 (all) | **2 (random)** |
+| Sensor zones/day | 4 (all) | 4 (all) | 2 (random) |
 | Sensor noise | Low | High | High |
 | Age confound | 0.10 | 0.15 | 0.15 |
 | Tool budgets | 2/day | 1/day | 1/day |
 | Tide bonus | 2/boat | 1/boat | 1/boat |
-| Episode length | 20 days | 20 days | 20 days |
-| Max boats | 10 | 10 | 10 |
+| Episode length | 20 | 20 | 20 |
 
-`CONFIG = BENCHMARK_CONFIG` is the default used everywhere.
+`CONFIG = BENCHMARK_CONFIG` is the default.
 
 ## Evaluation Metrics
 
-| Metric | What it measures |
+| Metric | Measures |
 |---|---|
 | `total_reward` | Cumulative fishing profit over 20 days |
 | `mean_brier_storm` | Belief calibration on storm presence |
 | `mean_brier_equip` | Belief calibration on equipment failure |
-| `detection_lag` | Days between risk onset and agent detecting it |
 | `tool_use_gap` | Cost of not gathering available information |
 | `inference_gap` | Cost of misinterpreting gathered information |
 | `planning_gap` | Cost of not acting optimally on stated beliefs |
@@ -281,8 +182,8 @@ The three gaps sum exactly to `oracle_reward - actual_reward` at every step (alg
 |---|---:|---:|---:|---:|---:|---:|
 | Random | 472.6 | 0.2500 | 0.3460 | 382.8 | 470.0 | 126.6 |
 | NaivePattern | 435.4 | 0.2219 | 0.2485 | 382.8 | 507.4 | 126.4 |
-| **LLMAgent (GPT 5.4)** | **663** | **0.0870** | **0.2280** | **0.0** | — | — |
-| **CodingAgent (GPT 5.4)** | **1069** | — | — | — | — | — |
+| **LLMAgent (GPT 5.4)** | **663** | **0.0870** | **0.2280** | **0.0** | -- | -- |
+| **CodingAgent (GPT 5.4)** | **1069** | -- | -- | -- | -- | -- |
 | **LLM+Solver (GPT 5.4)** | **1124.0** | **0.1870** | **0.3093** | **0.0** | **392.0** | **0.0** |
 | **CausalLearner** | **1324.0** | **0.1331** | **0.2152** | **0.0** | **192.0** | **0.0** |
 | CausalReasoner | 1516.0 | 0.1236 | 0.2104 | 0.0 | 0.0 | 0.0 |
@@ -290,54 +191,29 @@ The three gaps sum exactly to `oracle_reward - actual_reward` at every step (alg
 
 *LLMAgent and CodingAgent results are partial (3/5 and 1/5 seeds respectively).*
 
-**Key observations:**
-
-- **CausalLearner (1324) > LLM+Solver (1124)**: With tightened distributions, the LLM's parameter estimation errors matter more. Equipment params are frequently swapped (broken/ok means confused), causing large inference gaps.
-- **LLM+Solver (1124) < CausalReasoner (1516)**: The inference gap (392.0) is entirely from imperfect LLM parameter estimates. Planning gap = 0 confirms the solver acts optimally on its beliefs.
-- **CodingAgent (1069) [BUGGED]**: Uses Agno framework with PythonTools, but GPT-5.4 ignores the Python REPL entirely — never calls `run_python_code` despite explicit prompting. Falls back to SQL + natural language reasoning. Should score higher if the coding loop worked.
-- **LLMAgent (663) << LLM+Solver (1124)**: Free-form LLM struggles with consistent beliefs and in-context Bayes. Separating model discovery from inference nearly doubles performance.
-- **Planning gap = 0** for all Bayesian agents (CausalLearner, LLM+Solver, CausalReasoner): exact solver always acts optimally on its beliefs.
-- **Random (473) ≈ NaivePattern (435)**: With only 2 sensor zones visible per day, NaivePattern's heuristics become unreliable.
-
 ### Benchmark Ladder
 
 ```
-Random (473) ≈ NaivePattern (435) << LLMAgent (663) < CodingAgent* (1069) < LLM+Solver (1124) < CausalLearner (1324) < CausalReasoner (1516) < Oracle (1716)
+Random (473) ~ NaivePattern (435) << LLMAgent (663) < CodingAgent* (1069) < LLM+Solver (1124) < CausalLearner (1324) < CausalReasoner (1516) < Oracle (1716)
 
-* CodingAgent is bugged — does not use Python REPL
+* CodingAgent is bugged -- does not use Python REPL
 ```
 
----
+## Curriculum Learning Results (WorldGen, 5 levels)
 
-## Curriculum Learning Results (5 levels, World Generator)
+Generated configs using `curriculum_knobs()`, testing agent robustness to varying observability and causal structure.
 
-**Setup**: Dynamically generated configs using `world_knobs()` curriculum function, testing agent robustness to varying observability/noise/causal structure.
+| Agent | L0.0 | L0.25 | L0.5 | L0.75 | L1.0 | Delta |
+|---|---:|---:|---:|---:|---:|---:|
+| Random | 391 | 356 | 317 | 379 | -185 | -576 |
+| NaivePattern | 722 | 400 | 168 | 498 | 160 | -562 |
+| CausalLearner | 1136 | 769 | 726 | 538 | 68 | -1068 |
+| CausalReasoner | 1127 | 819 | 1222 | 686 | 279 | -848 |
+| LLM+Solver | 819 | 204 | 125 | 201 | -319 | -1138 |
+| Oracle | 1237 | 1238 | 1426 | 1321 | 1534 | +297 |
 
-### Key Result: Curriculum Scaling
-
-| Agent | L0.0 (Trivial) | L0.25 (Easy) | L0.5 (Medium) | L0.75 (Hard) | L1.0 (Nightmare) | Easy→Hard Delta |
-|-------|--------|--------|---------|---------|----------|----------|
-| **Random** | 391.0 | 356.0 | 317.3 | 378.7 | -185.0 | -576 |
-| **NaivePattern** | 721.7 | 400.0 | 168.0 | 498.3 | 160.0 | -562 |
-| **CausalLearner** | 1136.3 | 769.3 | 726.3 | 537.7 | 68.0 | -1068 |
-| **CausalReasoner** | 1127.0 | 819.3 | 1222.0 | 685.7 | 279.3 | -848 |
-| **LLM+Solver** | 818.5 | 203.5 | 125.0 | 201.0 | -319.0 | -1138 |
-| **Oracle** | 1236.7 | 1237.7 | 1425.7 | 1320.7 | 1534.3 | +297 |
-
-### Key Findings
-
-1. **Oracle Improves with Difficulty (+297 points)**: Full-state observation means richer causal structure is beneficial, validating that the curriculum creates **causally complex** problems, not random noise.
-
-2. **CausalReasoner is Most Robust (-848 delta)**: Explicit causal reasoning adapts to curriculum difficulty better than learning-based approaches. Maintains 279-1127 reward across all levels.
-
-3. **CausalLearner Collapses at Hard Levels (-1068 delta)**: Learning-based parameter estimation fails when curriculum difficulty exceeds training data diversity (from 1136 at L0.0 → 68 at L1.0).
-
-4. **LLM+Solver Fails Even on Trivial Level (818.5 at L0.0)**: One-shot parameter discovery from 30-day history cannot reliably estimate 50+ POMDP parameters, creating 193-point inference gap even on easy problems. Gap grows to 860 at L0.5 (worst case).
-
-5. **Seed-Dependent Variance Reveals Information Bottleneck**: LLM+Solver shows 896-point std at L0.5 (seed 42 fails catastrophically, seed 123 recovers), vs 121.9 for CausalReasoner. This confirms the bottleneck is **information availability**, not prompt quality (improved prompt with 1,400+ words did not solve it).
-
-**Conclusion**: Parameter discovery is fundamentally limited by observability. Agents must either (a) learn from sustained outcome feedback (CausalLearner, 10k episodes) or (b) reason causally with explicit structure (CausalReasoner), not attempt one-shot estimation.
-
-See [COMPREHENSIVE_BENCHMARK_REPORT.md](reports/2026-04-curriculum/COMPREHENSIVE_BENCHMARK_REPORT.md) for full statistical analysis and [LLM_SOLVER_ANALYSIS.md](reports/2026-04-curriculum/LLM_SOLVER_ANALYSIS.md) for LLM+Solver diagnostic report.
-
----
+Key findings:
+- Oracle improves with difficulty (+297): richer causal structure is beneficial with full-state observation
+- CausalReasoner is most robust (-848): explicit causal reasoning adapts best across levels
+- CausalLearner collapses at hard levels (-1068): learning-based estimation fails when data diversity is low
+- LLM+Solver fails even on trivial (819 at L0.0): one-shot parameter discovery cannot reliably estimate 50+ parameters

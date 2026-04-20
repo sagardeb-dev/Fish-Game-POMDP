@@ -10,6 +10,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "agno>=2.5.14",
+    "causal-learn>=0.1.4.5",
     "numpy",
     "openai>=2.30.0",
     "pandas>=3.0.2",

@@ -33,24 +33,38 @@ from causal_discovery.scm import (
     scm_weight_matrix,
     topological_order_from_dag,
 )
+from causal_discovery.runtime import BenchmarkEnv, SessionOutput
 from causal_discovery.sampling import sample_interventional_data, sample_observational_data
+from causal_discovery.scoring import (
+    SessionScore,
+    efficiency_score,
+    interventional_score,
+    observational_score,
+    score_session,
+)
 
 __all__ = [
     "BenchmarkConfig",
+    "BenchmarkEnv",
     "BenchmarkInstance",
     "CPDAG",
     "DAG",
     "DEFAULT_WEIGHT_RANGE",
     "LinearGaussianSCM",
     "Permutation",
+    "SessionOutput",
+    "SessionScore",
     "WeightInterval",
     "WeightRange",
     "build_benchmark_instance",
     "compute_minimum_intervention_set",
     "dag_to_cpdag",
+    "efficiency_score",
     "implied_covariance",
+    "interventional_score",
     "is_near_singular",
     "make_v1_config",
+    "observational_score",
     "parameterize_linear_gaussian_scm",
     "partial_correlation",
     "relevant_structural_partial_correlations",
@@ -63,6 +77,7 @@ __all__ = [
     "sample_observational_data",
     "sample_random_dag",
     "sample_random_topological_order",
+    "score_session",
     "scm_weight_matrix",
     "topological_order_from_dag",
     "valid_forward_edges",

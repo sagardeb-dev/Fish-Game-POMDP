@@ -25,30 +25,12 @@ from causal_discovery import (
     make_v1_config,
     score_submission,
 )
+from causal_discovery.baselines import parse_causallearn_endpoint_matrix
 from causallearn.search.ConstraintBased.PC import pc
 
 
 SHIFT_THRESHOLD = 0.5
 INTERVENTION_OFFSET = 3.0
-
-
-def parse_cpdag(endpoint_matrix: np.ndarray):
-    d = endpoint_matrix.shape[0]
-    directed: set[tuple[int, int]] = set()
-    undirected: set[tuple[int, int]] = set()
-    for i in range(d):
-        for j in range(i + 1, d):
-            a = endpoint_matrix[i, j]
-            b = endpoint_matrix[j, i]
-            if a == -1 and b == 1:
-                directed.add((i, j))
-            elif a == 1 and b == -1:
-                directed.add((j, i))
-            elif a == -1 and b == -1:
-                undirected.add((i, j))
-    return directed, undirected
-
-
 def would_create_cycle(directed: set[tuple[int, int]], src: int, dst: int) -> bool:
     adj: dict[int, list[int]] = {}
     for a, b in directed:
@@ -100,7 +82,9 @@ def run_one(seed: int, d: int = 5, n_obs: int = 500, alpha: float = 0.05) -> dic
     mu_obs = data.mean(axis=0)
 
     cg = pc(data, alpha=alpha, indep_test="fisherz", show_progress=False, verbose=False)
-    directed, undirected = parse_cpdag(cg.G.graph)
+    parsed_directed, parsed_undirected = parse_causallearn_endpoint_matrix(cg.G.graph)
+    directed = set(parsed_directed)
+    undirected = set(parsed_undirected)
 
     used = resolve_with_interventions(env, directed, undirected, mu_obs)
     submission = GraphSubmission(

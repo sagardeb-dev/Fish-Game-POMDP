@@ -18,31 +18,16 @@ from causal_discovery import (
     make_v1_config,
     score_submission,
 )
+from causal_discovery.baselines import parse_causallearn_endpoint_matrix
 from causallearn.search.ConstraintBased.PC import pc
 
 
-def cpdag_graph_to_submission(
-    endpoint_matrix: np.ndarray, interventions_used: int = 0
-) -> GraphSubmission:
-    """Convert causal-learn endpoint matrix to a benchmark graph submission."""
-    d = endpoint_matrix.shape[0]
-    directed: set[tuple[int, int]] = set()
-    undirected: set[tuple[int, int]] = set()
-    for i in range(d):
-        for j in range(i + 1, d):
-            a = endpoint_matrix[i, j]
-            b = endpoint_matrix[j, i]
-            if a == -1 and b == 1:
-                directed.add((i, j))
-            elif a == 1 and b == -1:
-                directed.add((j, i))
-            elif a == -1 and b == -1:
-                undirected.add((i, j))
+def cpdag_graph_to_submission(endpoint_matrix: np.ndarray) -> GraphSubmission:
+    directed, undirected = parse_causallearn_endpoint_matrix(endpoint_matrix)
     return GraphSubmission(
-        num_nodes=d,
+        num_nodes=int(endpoint_matrix.shape[0]),
         directed_edges=frozenset(directed),
         undirected_edges=frozenset(undirected),
-        interventions_used=interventions_used,
     )
 
 

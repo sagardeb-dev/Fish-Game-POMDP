@@ -25,6 +25,7 @@ from causal_discovery.scoring.submission import GraphSubmission
 def run_agent_session(env: BenchmarkEnv, agent: SessionAgent) -> SessionOutput:
     """Run one agent session through the benchmark runtime contract."""
     observational_data = env.observe()
+    latest_intervention_data: np.ndarray | None = None
     agent.on_observation(observational_data, env.remaining_budget)
 
     while True:
@@ -34,6 +35,7 @@ def run_agent_session(env: BenchmarkEnv, agent: SessionAgent) -> SessionOutput:
             if env.remaining_budget <= 0:
                 raise RuntimeError("Agent requested intervention but budget is exhausted")
             samples = env.intervene(var=action.var, value=action.value)
+            latest_intervention_data = samples
             agent.on_intervention_result(
                 var=action.var,
                 value=action.value,
@@ -43,51 +45,81 @@ def run_agent_session(env: BenchmarkEnv, agent: SessionAgent) -> SessionOutput:
             continue
 
         if isinstance(action, CorrelationAction):
-            value = correlation(observational_data, action.i, action.j)
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else observational_data
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                payload["value"] = correlation(data, action.i, action.j)
+            except ValueError as exc:
+                payload["value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="correlation",
-                    payload={"i": action.i, "j": action.j, "value": value},
+                    payload=payload,
                 )
             )
             continue
 
         if isinstance(action, PartialCorrelationAction):
-            value = partial_correlation(
-                observational_data, action.i, action.j, action.conditioning_on
-            )
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else observational_data
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "conditioning_on": list(action.conditioning_on),
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                payload["value"] = partial_correlation(
+                    data, action.i, action.j, action.conditioning_on
+                )
+            except ValueError as exc:
+                payload["value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="partial_correlation",
-                    payload={
-                        "i": action.i,
-                        "j": action.j,
-                        "conditioning_on": list(action.conditioning_on),
-                        "value": value,
-                    },
+                    payload=payload,
                 )
             )
             continue
 
         if isinstance(action, IndependenceTestAction):
-            independent, p_value = independence_test(
-                observational_data,
-                action.i,
-                action.j,
-                action.conditioning_on,
-                alpha=action.alpha,
-            )
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else observational_data
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "conditioning_on": list(action.conditioning_on),
+                "alpha": action.alpha,
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                independent, p_value = independence_test(
+                    data,
+                    action.i,
+                    action.j,
+                    action.conditioning_on,
+                    alpha=action.alpha,
+                )
+                payload["independent"] = independent
+                payload["p_value"] = p_value
+            except ValueError as exc:
+                payload["independent"] = None
+                payload["p_value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="independence_test",
-                    payload={
-                        "i": action.i,
-                        "j": action.j,
-                        "conditioning_on": list(action.conditioning_on),
-                        "alpha": action.alpha,
-                        "independent": independent,
-                        "p_value": p_value,
-                    },
+                    payload=payload,
                 )
             )
             continue

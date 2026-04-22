@@ -120,75 +120,71 @@ Methods:
 - Observational panel: `pc`, `llm_raw_obs`, `llm_stats_obs`
 - Active panel: `pc_greedy`, `llm_raw`, `llm_stats`, `oracle`
 
-## Results (Full Ladder Run)
+## Results (Full Ladder Tool-Call Run)
 
 Run artifacts:
 
-- Run ID: `20260422T081508Z`
-- Manifest: [`traces/ladder/full_ladder_run1/run_manifest.json`](traces/ladder/full_ladder_run1/run_manifest.json)
-- Long table: [`traces/ladder/full_ladder_run1/results_long.csv`](traces/ladder/full_ladder_run1/results_long.csv)
-- Summary table: [`traces/ladder/full_ladder_run1/results_summary.csv`](traces/ladder/full_ladder_run1/results_summary.csv)
-- Aggregated by level: [`traces/ladder/full_ladder_run1/aggregated_by_level.csv`](traces/ladder/full_ladder_run1/aggregated_by_level.csv)
-- Aggregated by seed: [`traces/ladder/full_ladder_run1/aggregated_by_seed.csv`](traces/ladder/full_ladder_run1/aggregated_by_seed.csv)
+- Run ID: `20260422T105637Z`
+- Manifest: [`traces/ladder/full_ladder_toolcall_run1/run_manifest.json`](traces/ladder/full_ladder_toolcall_run1/run_manifest.json)
+- Long table: [`traces/ladder/full_ladder_toolcall_run1/results_long.csv`](traces/ladder/full_ladder_toolcall_run1/results_long.csv)
+- Summary table: [`traces/ladder/full_ladder_toolcall_run1/results_summary.csv`](traces/ladder/full_ladder_toolcall_run1/results_summary.csv)
 
 Coverage:
 
 - Planned jobs: `336`
-- Successful jobs: `334`
-- Failed jobs: `2`
+- Unique completed jobs: `336`
+- Unique successful jobs: `336`
+- Unique failed jobs: `0`
 
-Failures:
-
-- `active / llm_stats / level=2 / seed=1426457537`: `JSONDecodeError: Extra data`
-- `observational / llm_raw_obs / level=3 / seed=976218778`: invalid submission (same pair directed and undirected)
+Note: this run used `--resume --retry-failed`. The raw CSV contains appended retry attempts. The tables below deduplicate by `(level, seed, panel, method, model)` and keep the latest attempt. The current generated `results_summary.csv` should not be used directly for resumed runs until summary deduplication is fixed.
 
 ### Observational panel (mean by level)
 
-`directed_f1 / dag_shd`
+`skeleton_f1% / directed_f1% / dag_shd`
 
 | Level | llm_raw_obs (gpt-5.4) | llm_stats_obs (gpt-5.4) | pc (baseline) |
 |---|---:|---:|---:|
-| 0 | 0.377 / 4.000 | 0.000 / 6.000 | 0.139 / 4.375 |
-| 1 | 0.418 / 6.125 | 0.000 / 9.875 | 0.238 / 5.125 |
-| 2 | 0.303 / 7.125 | 0.000 / 9.875 | 0.031 / 5.875 |
-| 3 | 0.137 / 17.714 | 0.000 / 19.125 | 0.172 / 8.000 |
-| 4 | 0.345 / 6.125 | 0.000 / 10.000 | 0.200 / 5.250 |
-| 5 | 0.137 / 17.625 | 0.000 / 15.250 | 0.038 / 8.875 |
+| 0 | 75.1% / 39.8% / 3.875 | 66.9% / 12.3% / 5.000 | 79.7% / 13.9% / 4.375 |
+| 1 | 60.9% / 27.7% / 7.000 | 35.5% / 13.4% / 6.375 | 68.8% / 23.8% / 5.125 |
+| 2 | 76.2% / 7.5% / 9.000 | 28.8% / 9.4% / 6.250 | 46.7% / 3.1% / 5.875 |
+| 3 | 54.6% / 18.8% / 14.250 | 23.0% / 11.4% / 8.625 | 65.0% / 17.2% / 8.000 |
+| 4 | 71.2% / 24.4% / 7.500 | 38.4% / 21.9% / 5.375 | 65.4% / 20.0% / 5.250 |
+| 5 | 56.3% / 17.7% / 14.750 | 23.0% / 11.8% / 8.875 | 46.9% / 3.8% / 8.875 |
 
 ### Active panel (mean by level)
 
-`directed_f1 / dag_shd`
+`skeleton_f1% / directed_f1% / dag_shd`
 
 | Level | llm_raw (gpt-5.4) | llm_stats (gpt-5.4) | pc_greedy (baseline) | oracle |
 |---|---:|---:|---:|---:|
-| 0 | 0.348 / 4.250 | 0.318 / 4.375 | 0.651 / 2.250 | 1.000 / 0.000 |
-| 1 | 0.319 / 6.500 | 0.278 / 6.125 | 0.497 / 3.750 | 1.000 / 0.000 |
-| 2 | 0.294 / 6.500 | 0.279 / 7.143 | 0.307 / 4.750 | 1.000 / 0.000 |
-| 3 | 0.314 / 13.250 | 0.167 / 11.250 | 0.489 / 5.750 | 1.000 / 0.000 |
-| 4 | 0.320 / 7.125 | 0.146 / 8.000 | 0.465 / 4.000 | 1.000 / 0.000 |
-| 5 | 0.199 / 13.875 | 0.086 / 12.000 | 0.152 / 8.250 | 1.000 / 0.000 |
+| 0 | 67.3% / 28.5% / 4.625 | 72.2% / 31.2% / 4.250 | 79.7% / 65.1% / 2.250 | 100.0% / 100.0% / 0.000 |
+| 1 | 57.9% / 24.1% / 6.875 | 42.3% / 13.4% / 6.375 | 68.8% / 49.7% / 3.750 | 100.0% / 100.0% / 0.000 |
+| 2 | 60.0% / 27.6% / 6.625 | 33.4% / 12.2% / 6.375 | 46.7% / 30.7% / 4.750 | 100.0% / 100.0% / 0.000 |
+| 3 | 52.1% / 20.6% / 14.000 | 24.3% / 18.3% / 8.625 | 65.0% / 48.9% / 5.750 | 100.0% / 100.0% / 0.000 |
+| 4 | 65.2% / 15.0% / 7.625 | 40.5% / 21.6% / 5.375 | 65.4% / 46.5% / 4.000 | 100.0% / 100.0% / 0.000 |
+| 5 | 50.4% / 21.6% / 15.875 | 27.5% / 16.4% / 8.500 | 46.9% / 15.2% / 8.250 | 100.0% / 100.0% / 0.000 |
 
 ### Weighted overall averages across levels
 
 Observational:
 
-- `llm_raw_obs`: `skeleton_f1=0.684`, `directed_f1=0.290`, `dag_shd=9.617`
-- `llm_stats_obs`: `skeleton_f1=0.690`, `directed_f1=0.000`, `dag_shd=11.688`
-- `pc`: `skeleton_f1=0.621`, `directed_f1=0.136`, `dag_shd=6.250`
+- `llm_raw_obs`: `skeleton_f1=65.7%`, `directed_f1=22.6%`, `dag_shd=9.396`
+- `llm_stats_obs`: `skeleton_f1=35.9%`, `directed_f1=13.3%`, `dag_shd=6.750`
+- `pc`: `skeleton_f1=62.1%`, `directed_f1=13.6%`, `dag_shd=6.250`
 
 Active:
 
-- `llm_raw`: `skeleton_f1=0.598`, `directed_f1=0.299`, `dag_shd=8.583`, `efficiency=0.917`
-- `llm_stats`: `skeleton_f1=0.531`, `directed_f1=0.211`, `dag_shd=8.170`, `efficiency=0.968`
-- `pc_greedy`: `skeleton_f1=0.621`, `directed_f1=0.427`, `dag_shd=4.792`, `efficiency=0.896`
+- `llm_raw`: `skeleton_f1=58.8%`, `directed_f1=22.9%`, `dag_shd=9.271`, `efficiency=92.7%`
+- `llm_stats`: `skeleton_f1=40.0%`, `directed_f1=18.8%`, `dag_shd=6.583`, `efficiency=100.0%`
+- `pc_greedy`: `skeleton_f1=62.1%`, `directed_f1=42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
 - `oracle`: perfect on all metrics
 
 ### Cost (gpt-5.4, this run)
 
-- Prompt tokens: `564,750`
-- Completion tokens: `37,440`
-- Total tokens: `602,190`
-- Estimated cost: `~$1.97` (input `$2.50/M`, output `$15.00/M`)
+- Prompt tokens: `1,397,089`
+- Completion tokens: `94,871`
+- Total tokens: `1,491,960`
+- Estimated cost: `~$4.92` (input `$2.50/M`, output `$15.00/M`)
 
 ## How to Run
 
@@ -214,13 +210,13 @@ uv run python run_pc_interventional_baseline.py
 Full ladder:
 
 ```bash
-uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_run1"
+uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_toolcall_run1"
 ```
 
 Resume + retry failed:
 
 ```bash
-uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_run1" --resume --retry-failed
+uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_toolcall_run1" --resume --retry-failed
 ```
 
 ## Repository Structure
@@ -250,6 +246,5 @@ RL-environment/
 
 ## Known Gaps / Next Fixes
 
-- Harden model output parsing against multi-object JSON responses.
-- Add sanitizer for edge-pair overlap in LLM submissions before final validation.
+- Deduplicate retry attempts inside `results_summary.csv` so resumed runs cannot double-count old attempts.
 - Add explicit cost/token budget guardrails to `run_ladder.py`.

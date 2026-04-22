@@ -38,10 +38,123 @@ from causal_discovery import (  # noqa: E402
     parse_causallearn_endpoint_matrix,
     score_submission,
 )
+from causal_discovery.agents.stats_tools import (  # noqa: E402
+    correlation,
+    independence_test,
+    partial_correlation,
+)
 
 
 SHIFT_THRESHOLD = 0.5
 INTERVENTION_OFFSET = 3.0
+
+ACTION_NAMES = (
+    "intervene",
+    "correlation",
+    "partial_correlation",
+    "independence_test",
+    "submit_graph",
+)
+
+
+def make_action_response_schema(allowed_actions: frozenset[str]) -> dict[str, Any]:
+    unknown = allowed_actions.difference(ACTION_NAMES)
+    if unknown:
+        raise ValueError(f"Unknown action names in tool schema: {sorted(unknown)}")
+    return {
+        "name": "causal_discovery_action",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": sorted(allowed_actions),
+                },
+                "var": {"type": ["integer", "null"]},
+                "value": {"type": ["number", "null"]},
+                "i": {"type": ["integer", "null"]},
+                "j": {"type": ["integer", "null"]},
+                "conditioning_on": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                },
+                "alpha": {"type": ["number", "null"]},
+                "directed_edges": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                    },
+                },
+                "undirected_edges": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {"type": "integer"},
+                        "minItems": 2,
+                        "maxItems": 2,
+                    },
+                },
+                "reasoning_summary": {"type": "string"},
+            },
+            "required": [
+                "action",
+                "var",
+                "value",
+                "i",
+                "j",
+                "conditioning_on",
+                "alpha",
+                "directed_edges",
+                "undirected_edges",
+                "reasoning_summary",
+            ],
+            "additionalProperties": False,
+        },
+    }
+
+
+def make_action_tool(allowed_actions: frozenset[str]) -> dict[str, Any]:
+    schema = make_action_response_schema(allowed_actions)
+    return {
+        "type": "function",
+        "function": {
+            "name": schema["name"],
+            "description": "Submit exactly one causal-discovery benchmark action.",
+            "strict": schema["strict"],
+            "parameters": schema["schema"],
+        },
+    }
+
+
+def allowed_actions_for_method(method: str) -> frozenset[str]:
+    if method == "llm_raw":
+        return frozenset({"intervene", "submit_graph"})
+    if method == "llm_raw_obs":
+        return frozenset({"submit_graph"})
+    if method == "llm_stats":
+        return frozenset(
+            {
+                "correlation",
+                "partial_correlation",
+                "independence_test",
+                "intervene",
+                "submit_graph",
+            }
+        )
+    if method == "llm_stats_obs":
+        return frozenset(
+            {
+                "correlation",
+                "partial_correlation",
+                "independence_test",
+                "submit_graph",
+            }
+        )
+    raise ValueError(f"Method does not use an LLM action schema: {method}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,9 +187,11 @@ class WorkItem:
 class OpenAIJSONPolicyModel:
     """Strict single-object JSON model adapter for ladder runs."""
 
-    def __init__(self, client: OpenAI, model: str) -> None:
+    def __init__(self, client: OpenAI, model: str, allowed_actions: frozenset[str]) -> None:
         self._client = client
         self._model = model
+        self._action_schema = make_action_response_schema(allowed_actions)
+        self._action_tool = make_action_tool(allowed_actions)
         self.prompt_tokens = 0
         self.completion_tokens = 0
         self.total_tokens = 0
@@ -91,36 +206,59 @@ class OpenAIJSONPolicyModel:
         remaining_budget: int,
     ) -> str:
         self.calls += 1
-        history_payload = [
-            {"tool": item.tool, "payload": item.payload} for item in tool_history
-        ]
+        history_payload = [{"tool": item.tool, "payload": item.payload} for item in tool_history]
         user_msg = (
             f"Session data JSON: {session_prompt}\n"
             f"Remaining budget: {remaining_budget}\n"
-            f"Tool history JSON: {json.dumps(history_payload, separators=(',', ':'), ensure_ascii=True)}\n"
-            "Return exactly one JSON object representing exactly one action."
+            "Tool history JSON: "
+            f"{json.dumps(history_payload, separators=(',', ':'), ensure_ascii=True, allow_nan=False)}\n"
+            "Call the causal_discovery_action tool exactly once for your next action."
         )
         response = self._client.chat.completions.create(
             model=self._model,
-            response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_msg},
             ],
+            tools=[self._action_tool],
+            tool_choice={
+                "type": "function",
+                "function": {"name": self._action_schema["name"]},
+            },
+            parallel_tool_calls=False,
             temperature=0,
         )
         if response.usage is not None:
             self.prompt_tokens += int(response.usage.prompt_tokens or 0)
             self.completion_tokens += int(response.usage.completion_tokens or 0)
             self.total_tokens += int(response.usage.total_tokens or 0)
-        content = response.choices[0].message.content
-        if not isinstance(content, str):
-            raise RuntimeError("Model returned empty or non-text content")
-        # strict one-object parse for official ladder protocol
-        parsed = json.loads(content)
+        message = response.choices[0].message
+        tool_calls = message.tool_calls or []
+        if len(tool_calls) != 1:
+            content = message.content or ""
+            snippet = content[:240].replace("\n", "\\n")
+            raise ValueError(
+                "Model must return exactly one causal_discovery_action tool call; "
+                f"got {len(tool_calls)}. content_prefix={snippet!r}"
+            )
+        tool_call = tool_calls[0]
+        if tool_call.function.name != self._action_schema["name"]:
+            raise ValueError(
+                "Unexpected tool call "
+                f"{tool_call.function.name!r}; expected {self._action_schema['name']!r}"
+            )
+        content = tool_call.function.arguments
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError as exc:
+            snippet = content[:240].replace("\n", "\\n")
+            raise ValueError(
+                "Model output JSON parse failed "
+                f"({type(exc).__name__}: {exc}). content_prefix={snippet!r}"
+            ) from exc
         if not isinstance(parsed, dict):
             raise ValueError("Model output must be a JSON object")
-        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True)
+        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
 
 
 class TraceWriter:
@@ -134,7 +272,9 @@ class TraceWriter:
             "key": key,
             "payload": payload,
         }
-        self._fh.write(json.dumps(record, separators=(",", ":"), ensure_ascii=True) + "\n")
+        self._fh.write(
+            json.dumps(record, separators=(",", ":"), ensure_ascii=True, allow_nan=False) + "\n"
+        )
         self._fh.flush()
 
     def close(self) -> None:
@@ -266,6 +406,25 @@ def would_create_cycle(directed: set[tuple[int, int]], src: int, dst: int) -> bo
     return False
 
 
+def _sanitize_submission_edges(
+    directed_edges: tuple[tuple[int, int], ...] | list[tuple[int, int]],
+    undirected_edges: tuple[tuple[int, int], ...] | list[tuple[int, int]],
+) -> tuple[frozenset[tuple[int, int]], frozenset[tuple[int, int]], int]:
+    directed = frozenset((int(src), int(dst)) for src, dst in directed_edges)
+    directed_pairs = {
+        (min(int(src), int(dst)), max(int(src), int(dst))) for src, dst in directed
+    }
+    undirected: set[tuple[int, int]] = set()
+    dropped = 0
+    for a, b in undirected_edges:
+        edge = (min(int(a), int(b)), max(int(a), int(b)))
+        if edge in directed_pairs:
+            dropped += 1
+            continue
+        undirected.add(edge)
+    return directed, frozenset(undirected), dropped
+
+
 def resolve_with_interventions(
     env: BenchmarkEnv,
     directed: set[tuple[int, int]],
@@ -328,6 +487,11 @@ def default_row(
         "opt_set_size": "",
         "budget": "",
         "interventions_used": "",
+        "total_actions": "",
+        "stats_actions": "",
+        "intervene_actions": "",
+        "submit_actions": "",
+        "sanitized_overlap_count": "",
         "submit_directed": "",
         "submit_undirected": "",
         "skeleton_precision": "",
@@ -425,16 +589,27 @@ def run_llm(
     max_steps_stats: int,
     trace: TraceWriter,
     work_key: str,
-) -> tuple[GraphSubmission, Any, OpenAIJSONPolicyModel]:
+) -> tuple[GraphSubmission, Any, OpenAIJSONPolicyModel, dict[str, int]]:
     env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
     obs = env.observe()
+    latest_intervention_data: np.ndarray | None = None
 
     allow_interventions = method in {"llm_raw", "llm_stats"}
     is_stats = method in {"llm_stats", "llm_stats_obs"}
     max_steps = max_steps_stats if is_stats else max_steps_raw
     logical_budget = env.remaining_budget if allow_interventions else 0
+    total_actions = 0
+    stats_actions = 0
+    intervene_actions = 0
+    submit_actions = 0
+    sanitized_overlap_count = 0
 
-    model = OpenAIJSONPolicyModel(client=client, model=model_id)
+    allowed_actions = allowed_actions_for_method(method)
+    model = OpenAIJSONPolicyModel(
+        client=client,
+        model=model_id,
+        allowed_actions=allowed_actions,
+    )
     names = tuple(f"X{i}" for i in range(instance.config.d))
     if is_stats:
         agent = LLMStatsAgent(
@@ -449,6 +624,12 @@ def run_llm(
             allow_interventions=allow_interventions,
         )
 
+    if agent.allowed_actions != allowed_actions:
+        raise RuntimeError(
+            f"Agent/tool action mismatch for {method}: "
+            f"agent={sorted(agent.allowed_actions)} tool={sorted(allowed_actions)}"
+        )
+
     agent.on_observation(obs, logical_budget)
     trace.log(
         "llm_observation",
@@ -458,14 +639,17 @@ def run_llm(
 
     for step in range(1, max_steps + 1):
         action = agent.next_action(logical_budget if not allow_interventions else env.remaining_budget)
+        total_actions += 1
         trace.log("llm_action", work_key, {"step": step, "action_type": type(action).__name__})
 
         if isinstance(action, InterveneAction):
+            intervene_actions += 1
             if not allow_interventions:
                 raise RuntimeError("Protocol violation: intervention requested in observational mode")
             if env.remaining_budget <= 0:
                 raise RuntimeError("Protocol violation: intervention requested with exhausted budget")
             samples = env.intervene(var=action.var, value=action.value)
+            latest_intervention_data = samples
             logical_budget = env.remaining_budget
             agent.on_intervention_result(
                 var=action.var,
@@ -487,66 +671,119 @@ def run_llm(
             continue
 
         if isinstance(action, CorrelationAction):
-            value = float(np.corrcoef(obs[:, action.i], obs[:, action.j])[0, 1])
+            stats_actions += 1
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else obs
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                payload["value"] = correlation(data, action.i, action.j)
+            except ValueError as exc:
+                payload["value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="correlation",
-                    payload={"i": action.i, "j": action.j, "value": value},
+                    payload=payload,
                 )
             )
+            trace.log("llm_tool_result", work_key, {"step": step, "tool": "correlation", **payload})
             continue
 
         if isinstance(action, PartialCorrelationAction):
-            from causal_discovery.agents.stats_tools import partial_correlation
-
-            value = partial_correlation(obs, action.i, action.j, action.conditioning_on)
+            stats_actions += 1
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else obs
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "conditioning_on": list(action.conditioning_on),
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                payload["value"] = partial_correlation(
+                    data, action.i, action.j, action.conditioning_on
+                )
+            except ValueError as exc:
+                payload["value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="partial_correlation",
-                    payload={
-                        "i": action.i,
-                        "j": action.j,
-                        "conditioning_on": list(action.conditioning_on),
-                        "value": value,
-                    },
+                    payload=payload,
                 )
             )
+            trace.log("llm_tool_result", work_key, {"step": step, "tool": "partial_correlation", **payload})
             continue
 
         if isinstance(action, IndependenceTestAction):
-            from causal_discovery.agents.stats_tools import independence_test
-
-            independent, p_value = independence_test(
-                obs,
-                action.i,
-                action.j,
-                action.conditioning_on,
-                alpha=action.alpha,
-            )
+            stats_actions += 1
+            data_source = "latest_intervention" if latest_intervention_data is not None else "observational"
+            data = latest_intervention_data if latest_intervention_data is not None else obs
+            payload = {
+                "i": action.i,
+                "j": action.j,
+                "conditioning_on": list(action.conditioning_on),
+                "alpha": action.alpha,
+                "data_source": data_source,
+                "rows": int(data.shape[0]),
+            }
+            try:
+                independent, p_value = independence_test(
+                    data,
+                    action.i,
+                    action.j,
+                    action.conditioning_on,
+                    alpha=action.alpha,
+                )
+                payload["independent"] = independent
+                payload["p_value"] = p_value
+            except ValueError as exc:
+                payload["independent"] = None
+                payload["p_value"] = None
+                payload["error"] = str(exc)
             agent.on_tool_result(
                 ToolResult(
                     tool="independence_test",
-                    payload={
-                        "i": action.i,
-                        "j": action.j,
-                        "conditioning_on": list(action.conditioning_on),
-                        "alpha": action.alpha,
-                        "independent": independent,
-                        "p_value": p_value,
-                    },
+                    payload=payload,
                 )
             )
+            trace.log("llm_tool_result", work_key, {"step": step, "tool": "independence_test", **payload})
             continue
 
         if isinstance(action, SubmitGraphAction):
+            submit_actions += 1
+            directed_edges, undirected_edges, dropped = _sanitize_submission_edges(
+                action.directed_edges,
+                action.undirected_edges,
+            )
+            sanitized_overlap_count += dropped
+            if dropped > 0:
+                trace.log(
+                    "llm_submit_sanitized",
+                    work_key,
+                    {"step": step, "dropped_undirected_edges": dropped},
+                )
             submission = GraphSubmission(
                 num_nodes=instance.config.d,
-                directed_edges=frozenset(action.directed_edges),
-                undirected_edges=frozenset(action.undirected_edges),
+                directed_edges=directed_edges,
+                undirected_edges=undirected_edges,
             )
             output = env.submit_graph(submission)
             scores = score_submission(instance, output.submission)
-            return output.submission, scores, model
+            diagnostics = {
+                "total_actions": total_actions,
+                "stats_actions": stats_actions,
+                "intervene_actions": intervene_actions,
+                "submit_actions": submit_actions,
+                "sanitized_overlap_count": sanitized_overlap_count,
+            }
+            return output.submission, scores, model, diagnostics
 
         raise RuntimeError(f"Unsupported action type: {type(action).__name__}")
 
@@ -596,6 +833,17 @@ def load_success_rows(long_csv: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def load_rows(long_csv: Path) -> list[dict[str, Any]]:
+    if not long_csv.exists():
+        return []
+    rows: list[dict[str, Any]] = []
+    with long_csv.open("r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append(row)
+    return rows
+
+
 def _float_field(row: dict[str, Any], name: str) -> float | None:
     raw = row.get(name, "")
     if raw in ("", None):
@@ -608,6 +856,16 @@ def _float_field(row: dict[str, Any], name: str) -> float | None:
 
 def summarize_results(rows: list[dict[str, Any]], out_csv: Path) -> None:
     metrics = ("skeleton_f1", "directed_f1", "dag_shd", "efficiency")
+    behavior_metrics = (
+        "submit_directed",
+        "submit_undirected",
+        "interventions_used",
+        "total_actions",
+        "stats_actions",
+        "intervene_actions",
+        "submit_actions",
+        "sanitized_overlap_count",
+    )
     grouped: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for row in rows:
         key = (row["panel"], row["level"], row["method"], row["model"])
@@ -618,24 +876,31 @@ def summarize_results(rows: list[dict[str, Any]], out_csv: Path) -> None:
         "level",
         "method",
         "model",
+        "n_total",
         "n_success",
+        "n_failed",
     ]
     for metric in metrics:
         header.extend([f"{metric}_mean", f"{metric}_std", f"{metric}_ci95_low", f"{metric}_ci95_high"])
+    for metric in behavior_metrics:
+        header.append(f"{metric}_mean")
 
     with out_csv.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=header)
         writer.writeheader()
         for (panel, level, method, model), group in sorted(grouped.items()):
+            success_group = [r for r in group if r.get("status") == "success"]
             out: dict[str, Any] = {
                 "panel": panel,
                 "level": level,
                 "method": method,
                 "model": model,
-                "n_success": len(group),
+                "n_total": len(group),
+                "n_success": len(success_group),
+                "n_failed": len(group) - len(success_group),
             }
             for metric in metrics:
-                values = [v for v in (_float_field(r, metric) for r in group) if v is not None]
+                values = [v for v in (_float_field(r, metric) for r in success_group) if v is not None]
                 if not values:
                     out[f"{metric}_mean"] = ""
                     out[f"{metric}_std"] = ""
@@ -649,6 +914,9 @@ def summarize_results(rows: list[dict[str, Any]], out_csv: Path) -> None:
                 out[f"{metric}_std"] = std
                 out[f"{metric}_ci95_low"] = mean - ci
                 out[f"{metric}_ci95_high"] = mean + ci
+            for metric in behavior_metrics:
+                values = [v for v in (_float_field(r, metric) for r in success_group) if v is not None]
+                out[f"{metric}_mean"] = float(np.mean(values)) if values else ""
             writer.writerow(out)
 
 
@@ -810,22 +1078,37 @@ def main() -> None:
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["total_actions"] = 0
+                row["stats_actions"] = 0
+                row["intervene_actions"] = 0
+                row["submit_actions"] = 0
+                row["sanitized_overlap_count"] = 0
             elif item.method == "pc_greedy":
                 submission, scores = run_pc_greedy_active(instance, runtime_seed, args.alpha)
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["total_actions"] = 0
+                row["stats_actions"] = 0
+                row["intervene_actions"] = 0
+                row["submit_actions"] = 0
+                row["sanitized_overlap_count"] = 0
             elif item.method == "oracle":
                 submission, scores = run_oracle(instance, runtime_seed)
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["total_actions"] = 0
+                row["stats_actions"] = 0
+                row["intervene_actions"] = 0
+                row["submit_actions"] = 0
+                row["sanitized_overlap_count"] = 0
             elif item.method in {"llm_raw", "llm_stats", "llm_raw_obs", "llm_stats_obs"}:
                 if client is None:
                     raise RuntimeError(
                         "OPENAI_API_KEY missing; required for LLM methods"
                     )
-                submission, scores, model_usage = run_llm(
+                submission, scores, model_usage, diagnostics = run_llm(
                     instance=instance,
                     runtime_seed=runtime_seed,
                     model_id=item.model,
@@ -839,6 +1122,11 @@ def main() -> None:
                 row["prompt_tokens"] = model_usage.prompt_tokens
                 row["completion_tokens"] = model_usage.completion_tokens
                 row["total_tokens"] = model_usage.total_tokens
+                row["total_actions"] = diagnostics["total_actions"]
+                row["stats_actions"] = diagnostics["stats_actions"]
+                row["intervene_actions"] = diagnostics["intervene_actions"]
+                row["submit_actions"] = diagnostics["submit_actions"]
+                row["sanitized_overlap_count"] = diagnostics["sanitized_overlap_count"]
             else:
                 raise RuntimeError(f"Unknown method: {item.method}")
 
@@ -878,8 +1166,8 @@ def main() -> None:
 
     trace.close()
 
-    success_rows = load_success_rows(long_csv)
-    summarize_results(success_rows, summary_csv)
+    all_rows = load_rows(long_csv)
+    summarize_results(all_rows, summary_csv)
     print_summary_table(summary_csv, panel="observational")
     print_summary_table(summary_csv, panel="active")
     print(f"\n[done] long={long_csv}")

@@ -176,7 +176,10 @@ def _parse_json_object(raw: str) -> dict:
 def _parse_action_payload(payload: dict) -> AgentAction:
     action = str(payload["action"]).strip()
     if action == "intervene":
-        return InterveneAction(var=int(payload["var"]), value=float(payload["value"]))
+        return InterveneAction(
+            var=_parse_index(payload["var"], field_name="var"),
+            value=float(payload["value"]),
+        )
     if action == "submit_graph":
         directed = tuple(_parse_directed_edges(payload.get("directed_edges", [])))
         undirected = tuple(_parse_undirected_edges(payload.get("undirected_edges", [])))
@@ -186,26 +189,49 @@ def _parse_action_payload(payload: dict) -> AgentAction:
             reasoning_summary=str(payload.get("reasoning_summary", "")),
         )
     if action == "correlation":
-        return CorrelationAction(i=int(payload["i"]), j=int(payload["j"]))
+        return CorrelationAction(
+            i=_parse_index(payload["i"], field_name="i"),
+            j=_parse_index(payload["j"], field_name="j"),
+        )
     if action == "partial_correlation":
-        cond = tuple(int(x) for x in payload.get("conditioning_on", []))
+        cond = tuple(
+            _parse_index(x, field_name="conditioning_on")
+            for x in (payload.get("conditioning_on") or [])
+        )
         return PartialCorrelationAction(
-            i=int(payload["i"]),
-            j=int(payload["j"]),
+            i=_parse_index(payload["i"], field_name="i"),
+            j=_parse_index(payload["j"], field_name="j"),
             conditioning_on=cond,
         )
     if action == "independence_test":
-        cond = tuple(int(x) for x in payload.get("conditioning_on", []))
+        cond = tuple(
+            _parse_index(x, field_name="conditioning_on")
+            for x in (payload.get("conditioning_on") or [])
+        )
         return IndependenceTestAction(
-            i=int(payload["i"]),
-            j=int(payload["j"]),
+            i=_parse_index(payload["i"], field_name="i"),
+            j=_parse_index(payload["j"], field_name="j"),
             conditioning_on=cond,
             alpha=float(payload.get("alpha", 0.05)),
         )
     raise ValueError(f"Unsupported action '{action}'")
 
 
+def _parse_index(value: object, *, field_name: str) -> int:
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        raw = value.strip()
+        if raw.isdigit() or (raw.startswith("-") and raw[1:].isdigit()):
+            return int(raw)
+        if len(raw) >= 2 and raw[0] in {"X", "x"} and raw[1:].isdigit():
+            return int(raw[1:])
+    raise ValueError(f"{field_name} must be an integer index (or Xk), got {value!r}")
+
+
 def _parse_directed_edges(raw_edges: object) -> list[tuple[int, int]]:
+    if raw_edges is None:
+        raw_edges = []
     if not isinstance(raw_edges, list):
         raise ValueError("directed_edges must be a list")
     out: list[tuple[int, int]] = []
@@ -217,6 +243,8 @@ def _parse_directed_edges(raw_edges: object) -> list[tuple[int, int]]:
 
 
 def _parse_undirected_edges(raw_edges: object) -> list[tuple[int, int]]:
+    if raw_edges is None:
+        raw_edges = []
     if not isinstance(raw_edges, list):
         raise ValueError("undirected_edges must be a list")
     out: list[tuple[int, int]] = []

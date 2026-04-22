@@ -9,7 +9,10 @@ import numpy as np
 
 def correlation(data: np.ndarray, i: int, j: int) -> float:
     _validate_pair(data, i, j)
+    _validate_nonconstant(data[:, i], f"X{i}")
+    _validate_nonconstant(data[:, j], f"X{j}")
     value = float(np.corrcoef(data[:, i], data[:, j])[0, 1])
+    _validate_finite(value, "correlation")
     return float(np.clip(value, -1.0, 1.0))
 
 
@@ -24,7 +27,10 @@ def partial_correlation(
     design = _design_matrix(data, z)
     xi = _residualize(data[:, i], design)
     xj = _residualize(data[:, j], design)
+    _validate_nonconstant(xi, f"residual X{i}")
+    _validate_nonconstant(xj, f"residual X{j}")
     value = float(np.corrcoef(xi, xj)[0, 1])
+    _validate_finite(value, "partial_correlation")
     return float(np.clip(value, -1.0, 1.0))
 
 
@@ -62,6 +68,16 @@ def _validate_pair(data: np.ndarray, i: int, j: int) -> None:
         raise ValueError(f"indices out of range for d={d}: {(i, j)}")
     if i == j:
         raise ValueError("indices i and j must differ")
+
+
+def _validate_nonconstant(values: np.ndarray, name: str) -> None:
+    if float(np.std(values)) == 0.0:
+        raise ValueError(f"{name} is constant; correlation is undefined")
+
+
+def _validate_finite(value: float, name: str) -> None:
+    if not math.isfinite(value):
+        raise ValueError(f"{name} is undefined")
 
 
 def _normalize_conditioning_set(

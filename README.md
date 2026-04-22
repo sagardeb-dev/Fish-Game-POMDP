@@ -140,44 +140,84 @@ Note: this run used `--resume --retry-failed`. The raw CSV contains appended ret
 
 ### Observational panel (mean by level)
 
-`skeleton_f1% / directed_f1% / dag_shd`
+All precision/recall/F1 values are percentages.
 
-| Level | llm_raw_obs (gpt-5.4) | llm_stats_obs (gpt-5.4) | pc (baseline) |
-|---|---:|---:|---:|
-| 0 | 75.1% / 39.8% / 3.875 | 66.9% / 12.3% / 5.000 | 79.7% / 13.9% / 4.375 |
-| 1 | 60.9% / 27.7% / 7.000 | 35.5% / 13.4% / 6.375 | 68.8% / 23.8% / 5.125 |
-| 2 | 76.2% / 7.5% / 9.000 | 28.8% / 9.4% / 6.250 | 46.7% / 3.1% / 5.875 |
-| 3 | 54.6% / 18.8% / 14.250 | 23.0% / 11.4% / 8.625 | 65.0% / 17.2% / 8.000 |
-| 4 | 71.2% / 24.4% / 7.500 | 38.4% / 21.9% / 5.375 | 65.4% / 20.0% / 5.250 |
-| 5 | 56.3% / 17.7% / 14.750 | 23.0% / 11.8% / 8.875 | 46.9% / 3.8% / 8.875 |
+| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `llm_raw_obs` | 82.1 | 70.0 | 75.1 | 42.9 | 37.5 | 39.8 | 3.875 |
+| 0 | `llm_stats_obs` | 88.1 | 60.0 | 66.9 | 41.7 | 10.0 | 12.3 | 5.000 |
+| 0 | `pc` | 100.0 | 67.5 | 79.7 | 78.1 | 12.5 | 13.9 | 4.375 |
+| 1 | `llm_raw_obs` | 65.1 | 62.5 | 60.9 | 60.6 | 22.9 | 27.7 | 7.000 |
+| 1 | `llm_stats_obs` | 65.6 | 27.1 | 35.5 | 81.2 | 10.4 | 13.4 | 6.375 |
+| 1 | `pc` | 96.9 | 54.2 | 68.8 | 68.8 | 16.7 | 23.8 | 5.125 |
+| 2 | `llm_raw_obs` | 65.8 | 95.8 | 76.2 | 96.9 | 6.2 | 7.5 | 9.000 |
+| 2 | `llm_stats_obs` | 70.8 | 18.8 | 28.8 | 68.8 | 6.2 | 9.4 | 6.250 |
+| 2 | `pc` | 100.0 | 31.2 | 46.7 | 93.8 | 2.1 | 3.1 | 5.875 |
+| 3 | `llm_raw_obs` | 55.2 | 66.7 | 54.6 | 82.3 | 13.9 | 18.8 | 14.250 |
+| 3 | `llm_stats_obs` | 81.2 | 13.9 | 23.0 | 81.2 | 6.9 | 11.4 | 8.625 |
+| 3 | `pc` | 100.0 | 48.6 | 65.0 | 89.6 | 11.1 | 17.2 | 8.000 |
+| 4 | `llm_raw_obs` | 68.1 | 81.2 | 71.2 | 79.8 | 20.8 | 24.4 | 7.500 |
+| 4 | `llm_stats_obs` | 87.5 | 25.0 | 38.4 | 68.8 | 14.6 | 21.9 | 5.375 |
+| 4 | `pc` | 96.9 | 50.0 | 65.4 | 71.9 | 14.6 | 20.0 | 5.250 |
+| 5 | `llm_raw_obs` | 52.5 | 72.2 | 56.3 | 82.1 | 13.9 | 17.7 | 14.750 |
+| 5 | `llm_stats_obs` | 68.8 | 13.9 | 23.0 | 68.8 | 6.9 | 11.8 | 8.875 |
+| 5 | `pc` | 97.5 | 31.9 | 46.9 | 93.8 | 2.8 | 3.8 | 8.875 |
 
 ### Active panel (mean by level)
 
-`skeleton_f1% / directed_f1% / dag_shd`
+All precision/recall/F1/efficiency values are percentages.
 
-| Level | llm_raw (gpt-5.4) | llm_stats (gpt-5.4) | pc_greedy (baseline) | oracle |
-|---|---:|---:|---:|---:|
-| 0 | 67.3% / 28.5% / 4.625 | 72.2% / 31.2% / 4.250 | 79.7% / 65.1% / 2.250 | 100.0% / 100.0% / 0.000 |
-| 1 | 57.9% / 24.1% / 6.875 | 42.3% / 13.4% / 6.375 | 68.8% / 49.7% / 3.750 | 100.0% / 100.0% / 0.000 |
-| 2 | 60.0% / 27.6% / 6.625 | 33.4% / 12.2% / 6.375 | 46.7% / 30.7% / 4.750 | 100.0% / 100.0% / 0.000 |
-| 3 | 52.1% / 20.6% / 14.000 | 24.3% / 18.3% / 8.625 | 65.0% / 48.9% / 5.750 | 100.0% / 100.0% / 0.000 |
-| 4 | 65.2% / 15.0% / 7.625 | 40.5% / 21.6% / 5.375 | 65.4% / 46.5% / 4.000 | 100.0% / 100.0% / 0.000 |
-| 5 | 50.4% / 21.6% / 15.875 | 27.5% / 16.4% / 8.500 | 46.9% / 15.2% / 8.250 | 100.0% / 100.0% / 0.000 |
+| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD | Eff |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `llm_raw` | 77.7 | 60.0 | 67.3 | 33.8 | 25.0 | 28.5 | 4.625 | 56.2 |
+| 0 | `llm_stats` | 82.9 | 65.0 | 72.2 | 42.3 | 27.5 | 31.2 | 4.250 | 100.0 |
+| 0 | `pc_greedy` | 100.0 | 67.5 | 79.7 | 82.3 | 55.0 | 65.1 | 2.250 | 75.0 |
+| 0 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 1 | `llm_raw` | 62.5 | 56.2 | 57.9 | 29.2 | 20.8 | 24.1 | 6.875 | 100.0 |
+| 1 | `llm_stats` | 71.9 | 31.2 | 42.3 | 37.5 | 8.3 | 13.4 | 6.375 | 100.0 |
+| 1 | `pc_greedy` | 96.9 | 54.2 | 68.8 | 67.7 | 39.6 | 49.7 | 3.750 | 87.5 |
+| 1 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 2 | `llm_raw` | 64.8 | 58.3 | 60.0 | 35.2 | 22.9 | 27.6 | 6.625 | 100.0 |
+| 2 | `llm_stats` | 66.7 | 22.9 | 33.4 | 35.4 | 8.3 | 12.2 | 6.375 | 100.0 |
+| 2 | `pc_greedy` | 100.0 | 31.2 | 46.7 | 62.5 | 20.8 | 30.7 | 4.750 | 93.8 |
+| 2 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 3 | `llm_raw` | 47.8 | 63.9 | 52.1 | 38.3 | 16.7 | 20.6 | 14.000 | 100.0 |
+| 3 | `llm_stats` | 68.8 | 15.3 | 24.3 | 58.3 | 11.1 | 18.3 | 8.625 | 100.0 |
+| 3 | `pc_greedy` | 100.0 | 48.6 | 65.0 | 77.3 | 36.1 | 48.9 | 5.750 | 81.2 |
+| 3 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 4 | `llm_raw` | 65.8 | 70.8 | 65.2 | 43.8 | 12.5 | 15.0 | 7.625 | 100.0 |
+| 4 | `llm_stats` | 87.5 | 27.1 | 40.5 | 58.3 | 14.6 | 21.6 | 5.375 | 100.0 |
+| 4 | `pc_greedy` | 96.9 | 50.0 | 65.4 | 69.8 | 35.4 | 46.5 | 4.000 | 100.0 |
+| 4 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 5 | `llm_raw` | 49.9 | 72.2 | 50.4 | 37.5 | 18.1 | 21.6 | 15.875 | 100.0 |
+| 5 | `llm_stats` | 85.4 | 16.7 | 27.5 | 56.2 | 9.7 | 16.4 | 8.500 | 100.0 |
+| 5 | `pc_greedy` | 97.5 | 31.9 | 46.9 | 41.7 | 9.7 | 15.2 | 8.250 | 100.0 |
+| 5 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
 
 ### Weighted overall averages across levels
 
 Observational:
 
-- `llm_raw_obs`: `skeleton_f1=65.7%`, `directed_f1=22.6%`, `dag_shd=9.396`
-- `llm_stats_obs`: `skeleton_f1=35.9%`, `directed_f1=13.3%`, `dag_shd=6.750`
-- `pc`: `skeleton_f1=62.1%`, `directed_f1=13.6%`, `dag_shd=6.250`
+- `llm_raw_obs`: `skeleton P/R/F1=64.8/74.7/65.7%`, `directed P/R/F1=74.1/19.2/22.6%`, `dag_shd=9.396`
+- `llm_stats_obs`: `skeleton P/R/F1=77.0/26.4/35.9%`, `directed P/R/F1=68.4/9.2/13.3%`, `dag_shd=6.750`
+- `pc`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=82.6/10.0/13.6%`, `dag_shd=6.250`
 
 Active:
 
-- `llm_raw`: `skeleton_f1=58.8%`, `directed_f1=22.9%`, `dag_shd=9.271`, `efficiency=92.7%`
-- `llm_stats`: `skeleton_f1=40.0%`, `directed_f1=18.8%`, `dag_shd=6.583`, `efficiency=100.0%`
-- `pc_greedy`: `skeleton_f1=62.1%`, `directed_f1=42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
+- `llm_raw`: `skeleton P/R/F1=61.4/63.6/58.8%`, `directed P/R/F1=36.3/19.3/22.9%`, `dag_shd=9.271`, `efficiency=92.7%`
+- `llm_stats`: `skeleton P/R/F1=77.2/29.7/40.0%`, `directed P/R/F1=48.0/13.3/18.8%`, `dag_shd=6.583`, `efficiency=100.0%`
+- `pc_greedy`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=66.9/32.8/42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
 - `oracle`: perfect on all metrics
+
+### Interpretation
+
+The headline result is not that LLMs beat classical causal discovery. They do not under the most error-sensitive metric. `pc_greedy` is the strongest non-oracle active method overall: it has the best directed F1 (`42.7%`) and the lowest DAG SHD (`4.792`), meaning it makes fewer total graph mistakes.
+
+`llm_raw` and `llm_raw_obs` often look competitive on F1 because they recover more edges than conservative methods. The precision/recall split shows the cost: active `llm_raw` has directed recall `19.3%` but directed precision only `36.3%`, while `pc_greedy` has directed precision `66.9%` and recall `32.8%`. The LLM is more willing to assert causal edges, which can lift recall but also increases false positives. SHD exposes this: active `llm_raw` has `dag_shd=9.271`, almost double `pc_greedy`.
+
+`llm_stats` is more conservative than `llm_raw`. It has better SHD than raw (`6.583` vs `9.271`) but lower skeleton and directed recall. This suggests the statistical tools reduce some hallucinated structure, but the model still does not use them well enough to match the PC-based active baseline.
+
+The main research takeaway is therefore precision/recall asymmetry: LLM agents can propose plausible causal structure, but they overcommit or underuse statistical evidence. The benchmark should report F1 together with precision, recall, and SHD; F1 alone can make aggressive guessing look better than it is.
 
 ### Cost (gpt-5.4, this run)
 

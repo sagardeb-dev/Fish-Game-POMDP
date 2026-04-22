@@ -1,17 +1,17 @@
 """Scoring APIs for the causal discovery benchmark."""
 
 from causal_discovery.scoring.scores import (
-    SessionScore,
+    ScoreReport,
+    dag_shd,
     efficiency_score,
-    interventional_score,
-    observational_score,
-    score_session,
+    score_submission,
 )
+from causal_discovery.scoring.submission import GraphSubmission
 
 __all__ = [
-    "SessionScore",
+    "GraphSubmission",
+    "ScoreReport",
+    "dag_shd",
     "efficiency_score",
-    "interventional_score",
-    "observational_score",
-    "score_session",
+    "score_submission",
 ]

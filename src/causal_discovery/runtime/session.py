@@ -7,16 +7,15 @@ from dataclasses import dataclass
 import numpy as np
 
 from causal_discovery.benchmark import BenchmarkInstance
-from causal_discovery.core import DAG
 from causal_discovery.sampling import sample_interventional_data
+from causal_discovery.scoring.submission import GraphSubmission
 
 
 @dataclass(frozen=True, slots=True)
 class SessionOutput:
     """Terminal record produced when an agent submits its estimated graph."""
 
-    estimated_graph: DAG
-    interventions_used: int
+    submission: GraphSubmission
 
 
 class BenchmarkEnv:
@@ -44,11 +43,13 @@ class BenchmarkEnv:
         if self._observed:
             raise RuntimeError("Observational data already delivered")
         self._observed = True
-        return self._instance.observational_data
+        return self._instance.observational_data.copy()
 
     def intervene(self, var: int, value: float) -> np.ndarray:
         if self._sealed:
             raise RuntimeError("Session is sealed")
+        if not self._observed:
+            raise RuntimeError("Call observe() before requesting interventions")
         if self._remaining_budget <= 0:
             raise RuntimeError("Intervention budget exhausted")
         samples = sample_interventional_data(
@@ -62,29 +63,58 @@ class BenchmarkEnv:
         self._interventions_used += 1
         return samples
 
-    def submit_graph(self, matrix: np.ndarray) -> SessionOutput:
+    def submit_graph(self, submission: GraphSubmission) -> SessionOutput:
+        self._ensure_can_submit()
+        if not isinstance(submission, GraphSubmission):
+            raise TypeError(
+                "submit_graph expects GraphSubmission; use submit_adjacency_matrix for matrices"
+            )
+        if submission.num_nodes != self._instance.config.d:
+            raise ValueError(
+                "Submitted graph node count "
+                f"{submission.num_nodes} does not match d={self._instance.config.d}"
+            )
+
+        self._sealed = True
+        sealed_submission = GraphSubmission(
+            num_nodes=submission.num_nodes,
+            directed_edges=submission.directed_edges,
+            undirected_edges=submission.undirected_edges,
+            interventions_used=self._interventions_used,
+        )
+        return SessionOutput(submission=sealed_submission)
+
+    def submit_adjacency_matrix(self, matrix: np.ndarray) -> SessionOutput:
+        self._ensure_can_submit()
+        if np.asarray(matrix).shape != (self._instance.config.d, self._instance.config.d):
+            raise ValueError(
+                "Submitted graph matrix must have shape "
+                f"({self._instance.config.d}, {self._instance.config.d})"
+            )
+        return self.submit_graph(
+            GraphSubmission.from_adjacency_matrix(
+                matrix,
+                interventions_used=self._interventions_used,
+            )
+        )
+
+    def submit_cpdag(
+        self,
+        directed_edges: set[tuple[int, int]] | frozenset[tuple[int, int]],
+        undirected_edges: set[tuple[int, int]] | frozenset[tuple[int, int]],
+    ) -> SessionOutput:
+        self._ensure_can_submit()
+        return self.submit_graph(
+            GraphSubmission(
+                num_nodes=self._instance.config.d,
+                directed_edges=frozenset(directed_edges),
+                undirected_edges=frozenset(undirected_edges),
+                interventions_used=self._interventions_used,
+            )
+        )
+
+    def _ensure_can_submit(self) -> None:
         if self._sealed:
             raise RuntimeError("Session is sealed")
-        dag = _dag_from_submission_matrix(matrix, self._instance.config.d)
-        self._sealed = True
-        return SessionOutput(estimated_graph=dag, interventions_used=self._interventions_used)
-
-
-def _dag_from_submission_matrix(matrix: np.ndarray, d: int) -> DAG:
-    array = np.asarray(matrix)
-    if array.shape != (d, d):
-        raise ValueError(
-            f"Submitted graph must have shape ({d}, {d}), got {array.shape}"
-        )
-    unique_values = set(np.unique(array).tolist())
-    if not unique_values.issubset({0, 1}):
-        raise ValueError(
-            f"Submitted graph must be binary (entries in {{0, 1}}), got values {sorted(unique_values)}"
-        )
-    if np.any(np.diag(array) != 0):
-        raise ValueError("Submitted graph must have zero diagonal (no self-loops)")
-    edges = [(int(src), int(dst)) for src, dst in zip(*np.nonzero(array))]
-    try:
-        return DAG.from_edges(d, edges)
-    except ValueError as exc:
-        raise ValueError(f"Submitted graph is not a valid DAG: {exc}") from exc
+        if not self._observed:
+            raise RuntimeError("Call observe() before submitting a graph")

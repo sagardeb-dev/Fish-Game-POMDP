@@ -278,12 +278,18 @@ Sonnet 4.6 active:
 
 ### Model comparison
 
-| Panel | Method | GPT-5.4 Dir F1 | Sonnet 4.6 Dir F1 | GPT-5.4 SHD | Sonnet 4.6 SHD |
-|---|---|---:|---:|---:|---:|
-| Obs | `llm_raw_obs` | 22.6 | 36.1 | 9.396 | 7.458 |
-| Obs | `llm_stats_obs` | 13.3 | 15.0 | 6.750 | 9.917 |
-| Active | `llm_raw` | 22.9 | 31.7 | 9.271 | 7.250 |
-| Active | `llm_stats` | 18.8 | 28.0 | 6.583 | 8.064 |
+| Panel | Method | Model/Baseline | Dir F1 | DAG SHD |
+|---|---|---|---:|---:|
+| Obs | `llm_raw_obs` | GPT-5.4 | 22.6 | 9.396 |
+| Obs | `llm_raw_obs` | Sonnet 4.6 | 36.1 | 7.458 |
+| Obs | `llm_stats_obs` | GPT-5.4 | 13.3 | 6.750 |
+| Obs | `llm_stats_obs` | Sonnet 4.6 | 15.0 | 9.917 |
+| Obs | `pc` | Baseline | 13.6 | 6.250 |
+| Active | `llm_raw` | GPT-5.4 | 22.9 | 9.271 |
+| Active | `llm_raw` | Sonnet 4.6 | 31.7 | 7.250 |
+| Active | `llm_stats` | GPT-5.4 | 18.8 | 6.583 |
+| Active | `llm_stats` | Sonnet 4.6 | 28.0 | 8.064 |
+| Active | `pc_greedy` | Baseline | 42.7 | 4.792 |
 
 ### Interpretation
 

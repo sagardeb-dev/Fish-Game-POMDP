@@ -9,6 +9,8 @@ import math
 import os
 import sys
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +57,9 @@ ACTION_NAMES = (
     "independence_test",
     "submit_graph",
 )
+
+ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
 
 
 def make_action_response_schema(allowed_actions: frozenset[str]) -> dict[str, Any]:
@@ -195,6 +200,8 @@ class OpenAIJSONPolicyModel:
         self.prompt_tokens = 0
         self.completion_tokens = 0
         self.total_tokens = 0
+        self.cache_creation_input_tokens = 0
+        self.cache_read_input_tokens = 0
         self.calls = 0
 
     def complete(
@@ -261,6 +268,110 @@ class OpenAIJSONPolicyModel:
         return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
 
 
+class AnthropicJSONPolicyModel:
+    """Anthropic Messages API adapter with prompt caching on the stable prefix."""
+
+    def __init__(self, api_key: str, model: str, allowed_actions: frozenset[str]) -> None:
+        self._api_key = api_key
+        self._model = model
+        self._action_schema = make_action_response_schema(allowed_actions)
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.total_tokens = 0
+        self.cache_creation_input_tokens = 0
+        self.cache_read_input_tokens = 0
+        self.calls = 0
+
+    def complete(
+        self,
+        *,
+        system_prompt: str,
+        session_prompt: str,
+        tool_history: tuple[ToolResult, ...],
+        remaining_budget: int,
+    ) -> str:
+        self.calls += 1
+        history_payload = [{"tool": item.tool, "payload": item.payload} for item in tool_history]
+        user_msg = (
+            f"Session data JSON: {session_prompt}\n"
+            f"Remaining budget: {remaining_budget}\n"
+            "Tool history JSON: "
+            f"{json.dumps(history_payload, separators=(',', ':'), ensure_ascii=True, allow_nan=False)}\n"
+            "Call the causal_discovery_action tool exactly once for your next action."
+        )
+        payload = {
+            "model": self._model,
+            "max_tokens": 2048,
+            "temperature": 0,
+            "system": [
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            "messages": [{"role": "user", "content": [{"type": "text", "text": user_msg}]}],
+            "tools": [
+                {
+                    "name": self._action_schema["name"],
+                    "description": "Submit exactly one causal-discovery benchmark action.",
+                    "input_schema": self._action_schema["schema"],
+                }
+            ],
+            "tool_choice": {"type": "tool", "name": self._action_schema["name"]},
+        }
+        response = self._post(payload)
+        usage = response.get("usage", {})
+        input_tokens = int(usage.get("input_tokens") or 0)
+        cache_creation = int(usage.get("cache_creation_input_tokens") or 0)
+        cache_read = int(usage.get("cache_read_input_tokens") or 0)
+        output_tokens = int(usage.get("output_tokens") or 0)
+        self.prompt_tokens += input_tokens + cache_creation + cache_read
+        self.completion_tokens += output_tokens
+        self.total_tokens += input_tokens + cache_creation + cache_read + output_tokens
+        self.cache_creation_input_tokens += cache_creation
+        self.cache_read_input_tokens += cache_read
+
+        tool_blocks = [
+            block
+            for block in response.get("content", [])
+            if isinstance(block, dict) and block.get("type") == "tool_use"
+        ]
+        if len(tool_blocks) != 1:
+            raise ValueError(
+                "Model must return exactly one causal_discovery_action tool call; "
+                f"got {len(tool_blocks)}"
+            )
+        block = tool_blocks[0]
+        if block.get("name") != self._action_schema["name"]:
+            raise ValueError(
+                f"Unexpected tool call {block.get('name')!r}; "
+                f"expected {self._action_schema['name']!r}"
+            )
+        parsed = block.get("input")
+        if not isinstance(parsed, dict):
+            raise ValueError("Anthropic tool input must be a JSON object")
+        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
+
+    def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
+        req = urllib.request.Request(
+            ANTHROPIC_API_URL,
+            data=json.dumps(payload, ensure_ascii=True, allow_nan=False).encode("utf-8"),
+            headers={
+                "content-type": "application/json",
+                "x-api-key": self._api_key,
+                "anthropic-version": ANTHROPIC_VERSION,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Anthropic API HTTP {exc.code}: {body}") from exc
+
+
 class TraceWriter:
     def __init__(self, path: Path) -> None:
         self._fh = path.open("a", encoding="utf-8")
@@ -304,6 +415,17 @@ def parse_models(text: str) -> list[str]:
     if not models:
         raise ValueError("No models provided")
     return models
+
+
+def provider_for_model(model: str) -> str:
+    if model.startswith("claude-"):
+        return "anthropic"
+    if model.startswith(("gpt-", "o")):
+        return "openai"
+    raise ValueError(
+        f"Cannot infer provider for model {model!r}. "
+        "Use an OpenAI model starting with 'gpt-'/'o' or an Anthropic model starting with 'claude-'."
+    )
 
 
 def build_seed_map_from_file(path: Path, levels: list[int], seeds_per_level: int) -> dict[int, list[int]]:
@@ -481,6 +603,8 @@ def default_row(
         "prompt_tokens": "",
         "completion_tokens": "",
         "total_tokens": "",
+        "cache_creation_input_tokens": "",
+        "cache_read_input_tokens": "",
         "true_edges": "",
         "cpdag_directed": "",
         "cpdag_undirected": "",
@@ -583,13 +707,14 @@ def run_llm(
     instance,
     runtime_seed: int,
     model_id: str,
-    client: OpenAI,
+    openai_client: OpenAI | None,
+    anthropic_api_key: str,
     method: str,
     max_steps_raw: int,
     max_steps_stats: int,
     trace: TraceWriter,
     work_key: str,
-) -> tuple[GraphSubmission, Any, OpenAIJSONPolicyModel, dict[str, int]]:
+) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
     env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
     obs = env.observe()
     latest_intervention_data: np.ndarray | None = None
@@ -605,11 +730,25 @@ def run_llm(
     sanitized_overlap_count = 0
 
     allowed_actions = allowed_actions_for_method(method)
-    model = OpenAIJSONPolicyModel(
-        client=client,
-        model=model_id,
-        allowed_actions=allowed_actions,
-    )
+    provider = provider_for_model(model_id)
+    if provider == "openai":
+        if openai_client is None:
+            raise RuntimeError("OPENAI_API_KEY missing; required for OpenAI LLM methods")
+        model = OpenAIJSONPolicyModel(
+            client=openai_client,
+            model=model_id,
+            allowed_actions=allowed_actions,
+        )
+    elif provider == "anthropic":
+        if not anthropic_api_key:
+            raise RuntimeError("ANTHROPIC_API_KEY missing; required for Anthropic LLM methods")
+        model = AnthropicJSONPolicyModel(
+            api_key=anthropic_api_key,
+            model=model_id,
+            allowed_actions=allowed_actions,
+        )
+    else:
+        raise RuntimeError(f"Unsupported provider: {provider}")
     names = tuple(f"X{i}" for i in range(instance.config.d))
     if is_stats:
         agent = LLMStatsAgent(
@@ -1033,14 +1172,26 @@ def main() -> None:
     )
 
     env_file = Path(args.env_file)
-    load_dotenv(env_file)
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    client = OpenAI(api_key=api_key) if api_key else None
+    env_loaded = load_dotenv(env_file, override=True)
+    openai_api_key = os.getenv("OPENAI_API_KEY", "")
+    anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
 
     work_items = make_work_items(levels, seed_map, models)
-    if client is None and any(item.method.startswith("llm_") for item in work_items):
+    required_providers = {
+        provider_for_model(item.model)
+        for item in work_items
+        if item.method.startswith("llm_")
+    }
+    if "openai" in required_providers and openai_client is None:
         raise RuntimeError(
-            "OPENAI_API_KEY missing; required for ladder run because LLM methods are enabled"
+            f"OPENAI_API_KEY missing; required for OpenAI model(s). "
+            f"env_file={env_file} loaded={env_loaded}"
+        )
+    if "anthropic" in required_providers and not anthropic_api_key:
+        raise RuntimeError(
+            f"ANTHROPIC_API_KEY missing; required for Anthropic model(s). "
+            f"env_file={env_file} loaded={env_loaded}"
         )
     total = len(work_items)
     done = 0
@@ -1078,6 +1229,8 @@ def main() -> None:
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["cache_creation_input_tokens"] = 0
+                row["cache_read_input_tokens"] = 0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
@@ -1088,6 +1241,8 @@ def main() -> None:
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["cache_creation_input_tokens"] = 0
+                row["cache_read_input_tokens"] = 0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
@@ -1098,21 +1253,20 @@ def main() -> None:
                 row["prompt_tokens"] = 0
                 row["completion_tokens"] = 0
                 row["total_tokens"] = 0
+                row["cache_creation_input_tokens"] = 0
+                row["cache_read_input_tokens"] = 0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
                 row["submit_actions"] = 0
                 row["sanitized_overlap_count"] = 0
             elif item.method in {"llm_raw", "llm_stats", "llm_raw_obs", "llm_stats_obs"}:
-                if client is None:
-                    raise RuntimeError(
-                        "OPENAI_API_KEY missing; required for LLM methods"
-                    )
                 submission, scores, model_usage, diagnostics = run_llm(
                     instance=instance,
                     runtime_seed=runtime_seed,
                     model_id=item.model,
-                    client=client,
+                    openai_client=openai_client,
+                    anthropic_api_key=anthropic_api_key,
                     method=item.method,
                     max_steps_raw=args.max_steps_raw,
                     max_steps_stats=args.max_steps_stats,
@@ -1122,6 +1276,8 @@ def main() -> None:
                 row["prompt_tokens"] = model_usage.prompt_tokens
                 row["completion_tokens"] = model_usage.completion_tokens
                 row["total_tokens"] = model_usage.total_tokens
+                row["cache_creation_input_tokens"] = model_usage.cache_creation_input_tokens
+                row["cache_read_input_tokens"] = model_usage.cache_read_input_tokens
                 row["total_actions"] = diagnostics["total_actions"]
                 row["stats_actions"] = diagnostics["stats_actions"]
                 row["intervene_actions"] = diagnostics["intervene_actions"]

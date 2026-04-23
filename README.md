@@ -120,25 +120,23 @@ Methods:
 - Observational panel: `pc`, `llm_raw_obs`, `llm_stats_obs`
 - Active panel: `pc_greedy`, `llm_raw`, `llm_stats`, `oracle`
 
-## Results (Full Ladder Tool-Call Run)
+## Results
 
-Run artifacts:
+Two full ladder runs are available:
 
-- Run ID: `20260422T105637Z`
-- Manifest: [`traces/ladder/full_ladder_toolcall_run1/run_manifest.json`](traces/ladder/full_ladder_toolcall_run1/run_manifest.json)
-- Long table: [`traces/ladder/full_ladder_toolcall_run1/results_long.csv`](traces/ladder/full_ladder_toolcall_run1/results_long.csv)
-- Summary table: [`traces/ladder/full_ladder_toolcall_run1/results_summary.csv`](traces/ladder/full_ladder_toolcall_run1/results_summary.csv)
+- GPT-5.4: [`traces/ladder/full_ladder_toolcall_run1/results_long.csv`](traces/ladder/full_ladder_toolcall_run1/results_long.csv)
+- Claude Sonnet 4.6: [`traces/ladder/sonnet46_full_ladder_run1/results_long.csv`](traces/ladder/sonnet46_full_ladder_run1/results_long.csv)
 
-Coverage:
+Each run covers the same ladder structure:
 
 - Planned jobs: `336`
 - Unique completed jobs: `336`
-- Unique successful jobs: `336`
-- Unique failed jobs: `0`
+- GPT-5.4 successful jobs: `336`
+- Sonnet 4.6 successful jobs: `335` (`1` failed `llm_stats` active row)
 
-Note: this run used `--resume --retry-failed`. The raw CSV contains appended retry attempts. The tables below deduplicate by `(level, seed, panel, method, model)` and keep the latest attempt. The current generated `results_summary.csv` should not be used directly for resumed runs until summary deduplication is fixed.
+Note: resumed runs can append retry attempts to `results_long.csv`. The tables below deduplicate by `(level, seed, panel, method, model)` and keep the latest attempt. The generated `results_summary.csv` should not be treated as authoritative for resumed runs until summary deduplication is fixed.
 
-### Observational panel (mean by level)
+### GPT-5.4: observational panel
 
 All precision/recall/F1 values are percentages.
 
@@ -163,7 +161,7 @@ All precision/recall/F1 values are percentages.
 | 5 | `llm_stats_obs` | 68.8 | 13.9 | 23.0 | 68.8 | 6.9 | 11.8 | 8.875 |
 | 5 | `pc` | 97.5 | 31.9 | 46.9 | 93.8 | 2.8 | 3.8 | 8.875 |
 
-### Active panel (mean by level)
+### GPT-5.4: active panel
 
 All precision/recall/F1/efficiency values are percentages.
 
@@ -194,6 +192,62 @@ All precision/recall/F1/efficiency values are percentages.
 | 5 | `pc_greedy` | 97.5 | 31.9 | 46.9 | 41.7 | 9.7 | 15.2 | 8.250 | 100.0 |
 | 5 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
 
+### Claude Sonnet 4.6: observational panel
+
+All precision/recall/F1 values are percentages.
+
+| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `llm_raw_obs` | 78.3 | 65.0 | 70.7 | 29.4 | 25.0 | 26.9 | 4.625 |
+| 0 | `llm_stats_obs` | 83.3 | 60.0 | 68.7 | 44.8 | 20.0 | 24.7 | 4.625 |
+| 0 | `pc` | 100.0 | 67.5 | 79.7 | 78.1 | 12.5 | 13.9 | 4.375 |
+| 1 | `llm_raw_obs` | 65.5 | 54.2 | 58.8 | 40.0 | 31.2 | 34.9 | 5.875 |
+| 1 | `llm_stats_obs` | 61.3 | 64.6 | 58.9 | 85.4 | 10.4 | 14.0 | 8.125 |
+| 1 | `pc` | 96.9 | 54.2 | 68.8 | 68.8 | 16.7 | 23.8 | 5.125 |
+| 2 | `llm_raw_obs` | 66.2 | 62.5 | 63.6 | 39.8 | 39.6 | 39.3 | 5.500 |
+| 2 | `llm_stats_obs` | 60.7 | 75.0 | 63.1 | 93.8 | 6.2 | 6.2 | 8.375 |
+| 2 | `pc` | 100.0 | 31.2 | 46.7 | 93.8 | 2.1 | 3.1 | 5.875 |
+| 3 | `llm_raw_obs` | 39.7 | 54.2 | 44.6 | 34.3 | 34.7 | 33.8 | 13.000 |
+| 3 | `llm_stats_obs` | 50.9 | 72.2 | 53.8 | 92.9 | 8.3 | 10.9 | 15.875 |
+| 3 | `pc` | 100.0 | 48.6 | 65.0 | 89.6 | 11.1 | 17.2 | 8.000 |
+| 4 | `llm_raw_obs` | 67.7 | 54.2 | 59.9 | 47.5 | 37.5 | 41.7 | 5.375 |
+| 4 | `llm_stats_obs` | 66.7 | 70.8 | 64.9 | 56.2 | 18.8 | 22.4 | 7.375 |
+| 4 | `pc` | 96.9 | 50.0 | 65.4 | 71.9 | 14.6 | 20.0 | 5.250 |
+| 5 | `llm_raw_obs` | 49.2 | 50.0 | 48.8 | 42.3 | 38.9 | 40.1 | 10.375 |
+| 5 | `llm_stats_obs` | 49.8 | 69.4 | 55.1 | 88.2 | 11.1 | 12.0 | 15.125 |
+| 5 | `pc` | 97.5 | 31.9 | 46.9 | 93.8 | 2.8 | 3.8 | 8.875 |
+
+### Claude Sonnet 4.6: active panel
+
+All precision/recall/F1/efficiency values are percentages.
+
+| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD | Eff |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | `llm_raw` | 73.1 | 57.5 | 63.7 | 31.9 | 27.5 | 29.4 | 4.625 | 87.5 |
+| 0 | `llm_stats` | 89.6 | 67.5 | 76.4 | 32.3 | 22.5 | 26.4 | 4.250 | 100.0 |
+| 0 | `pc_greedy` | 100.0 | 67.5 | 79.7 | 82.3 | 55.0 | 65.1 | 2.250 | 75.0 |
+| 0 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 1 | `llm_raw` | 66.3 | 54.2 | 58.6 | 34.4 | 25.0 | 28.4 | 6.250 | 100.0 |
+| 1 | `llm_stats` | 77.3 | 62.5 | 68.6 | 51.0 | 25.0 | 33.2 | 5.500 | 100.0 |
+| 1 | `pc_greedy` | 96.9 | 54.2 | 68.8 | 67.7 | 39.6 | 49.7 | 3.750 | 87.5 |
+| 1 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 2 | `llm_raw` | 60.3 | 54.2 | 56.7 | 38.8 | 35.4 | 36.9 | 5.875 | 100.0 |
+| 2 | `llm_stats` | 65.1 | 64.3 | 62.8 | 35.0 | 26.2 | 29.7 | 6.571 | 100.0 |
+| 2 | `pc_greedy` | 100.0 | 31.2 | 46.7 | 62.5 | 20.8 | 30.7 | 4.750 | 93.8 |
+| 2 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 3 | `llm_raw` | 51.0 | 52.8 | 51.4 | 30.7 | 29.2 | 29.7 | 10.875 | 100.0 |
+| 3 | `llm_stats` | 47.7 | 50.0 | 46.9 | 64.2 | 20.8 | 28.7 | 12.625 | 100.0 |
+| 3 | `pc_greedy` | 100.0 | 48.6 | 65.0 | 77.3 | 36.1 | 48.9 | 5.750 | 81.2 |
+| 3 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 4 | `llm_raw` | 72.1 | 58.3 | 63.9 | 37.1 | 31.2 | 33.6 | 5.500 | 100.0 |
+| 4 | `llm_stats` | 69.9 | 75.0 | 70.7 | 33.4 | 22.9 | 26.5 | 6.750 | 100.0 |
+| 4 | `pc_greedy` | 96.9 | 50.0 | 65.4 | 69.8 | 35.4 | 46.5 | 4.000 | 100.0 |
+| 4 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+| 5 | `llm_raw` | 49.8 | 40.3 | 43.5 | 36.9 | 29.2 | 31.9 | 10.375 | 100.0 |
+| 5 | `llm_stats` | 49.3 | 55.6 | 50.7 | 58.4 | 19.4 | 23.5 | 12.500 | 100.0 |
+| 5 | `pc_greedy` | 97.5 | 31.9 | 46.9 | 41.7 | 9.7 | 15.2 | 8.250 | 100.0 |
+| 5 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+
 ### Weighted overall averages across levels
 
 Observational:
@@ -209,15 +263,39 @@ Active:
 - `pc_greedy`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=66.9/32.8/42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
 - `oracle`: perfect on all metrics
 
+Sonnet 4.6 observational:
+
+- `llm_raw_obs`: `skeleton P/R/F1=61.1/56.7/57.7%`, `directed P/R/F1=38.9/34.5/36.1%`, `dag_shd=7.458`
+- `llm_stats_obs`: `skeleton P/R/F1=62.1/68.7/60.7%`, `directed P/R/F1=76.9/12.5/15.0%`, `dag_shd=9.917`
+- `pc`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=82.6/10.0/13.6%`, `dag_shd=6.250`
+
+Sonnet 4.6 active:
+
+- `llm_raw`: `skeleton P/R/F1=62.1/52.9/56.3%`, `directed P/R/F1=35.0/29.6/31.7%`, `dag_shd=7.250`, `efficiency=97.9%`
+- `llm_stats`: `skeleton P/R/F1=66.5/62.4/62.7%`, `directed P/R/F1=46.0/22.7/28.0%`, `dag_shd=8.064`, `efficiency=100.0%`, `n=47`
+- `pc_greedy`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=66.9/32.8/42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
+- `oracle`: perfect on all metrics
+
+### Model comparison
+
+| Panel | Method | GPT-5.4 Dir F1 | Sonnet 4.6 Dir F1 | GPT-5.4 SHD | Sonnet 4.6 SHD |
+|---|---|---:|---:|---:|---:|
+| Obs | `llm_raw_obs` | 22.6 | 36.1 | 9.396 | 7.458 |
+| Obs | `llm_stats_obs` | 13.3 | 15.0 | 6.750 | 9.917 |
+| Active | `llm_raw` | 22.9 | 31.7 | 9.271 | 7.250 |
+| Active | `llm_stats` | 18.8 | 28.0 | 6.583 | 8.064 |
+
 ### Interpretation
 
-The headline result is not that LLMs beat classical causal discovery. They do not under the most error-sensitive metric. `pc_greedy` is the strongest non-oracle active method overall: it has the best directed F1 (`42.7%`) and the lowest DAG SHD (`4.792`), meaning it makes fewer total graph mistakes.
+The headline result is not that LLMs beat classical causal discovery. They do not under the most error-sensitive metric. `pc_greedy` is the strongest non-oracle active method overall: it has the best active directed F1 (`42.7%`) and the lowest active DAG SHD (`4.792`), meaning it makes fewer total graph mistakes.
 
-`llm_raw` and `llm_raw_obs` often look competitive on F1 because they recover more edges than conservative methods. The precision/recall split shows the cost: active `llm_raw` has directed recall `19.3%` but directed precision only `36.3%`, while `pc_greedy` has directed precision `66.9%` and recall `32.8%`. The LLM is more willing to assert causal edges, which can lift recall but also increases false positives. SHD exposes this: active `llm_raw` has `dag_shd=9.271`, almost double `pc_greedy`.
+Sonnet 4.6 is the stronger LLM on directed recovery. It improves directed F1 over GPT-5.4 in every LLM setting, especially raw observational (`36.1%` vs `22.6%`) and raw active (`31.7%` vs `22.9%`). This means the weak GPT-5.4 result is partly a model-level limitation, not only a benchmark artifact.
 
-`llm_stats` is more conservative than `llm_raw`. It has better SHD than raw (`6.583` vs `9.271`) but lower skeleton and directed recall. This suggests the statistical tools reduce some hallucinated structure, but the model still does not use them well enough to match the PC-based active baseline.
+The deeper bottleneck still appears general across LLMs. Even Sonnet 4.6 remains below `pc_greedy` on active directed F1 (`31.7%`/`28.0%` vs `42.7%`) and SHD (`7.250`/`8.064` vs `4.792`). The LLMs recover some causal structure, but they do not consistently turn observational and interventional evidence into low-error DAGs.
 
-The main research takeaway is therefore precision/recall asymmetry: LLM agents can propose plausible causal structure, but they overcommit or underuse statistical evidence. The benchmark should report F1 together with precision, recall, and SHD; F1 alone can make aggressive guessing look better than it is.
+The stats-tool agents do not dominate raw agents. GPT-5.4 stats reduces SHD relative to raw but loses directed recall; Sonnet stats improves skeleton recovery but has worse SHD than Sonnet raw. This suggests that tool access alone is not enough: current LLMs still struggle with deciding which statistical evidence matters and when to submit a clean graph.
+
+The main research takeaway is precision/recall asymmetry. LLM agents can propose plausible causal structure, but they either overcommit edges or underuse statistical evidence. The benchmark should report precision, recall, F1, and SHD together; F1 alone can make aggressive guessing look better than it is.
 
 ### Cost (gpt-5.4, this run)
 
@@ -225,6 +303,12 @@ The main research takeaway is therefore precision/recall asymmetry: LLM agents c
 - Completion tokens: `94,871`
 - Total tokens: `1,491,960`
 - Estimated cost: `~$4.92` (input `$2.50/M`, output `$15.00/M`)
+
+### Cost (Sonnet 4.6, this run)
+
+- Estimated completed run cost: `~$10-$13`
+- Partial-run verified cost before resume: `$0.6255` for `11` completed LLM rows
+- Anthropic prompt caching was not effective in this run (`cache_read_input_tokens=0` during the checked partial run)
 
 ## How to Run
 

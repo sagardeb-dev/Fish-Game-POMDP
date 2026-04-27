@@ -1,23 +1,57 @@
 # V1 Change Log
 
-Concise notes for implementation changes that affect paper claims, results, or methodology.
+Minimal notes for implementation changes that affect paper claims, results, or methodology.
 
-## 2026-04-27 - Calibrate PC+greedy mean-shift threshold
+## PC+greedy threshold calibration
 
-Changed:
-- Replaced the fixed PC+greedy shift threshold `0.5` with a per-variable normal-approximation threshold for the difference of observational and interventional means.
-- Preserved the existing greedy behavior: significant shifts orient `target -> neighbor`; non-significant shifts default to `neighbor -> target`.
+- Replaced fixed `tau = 0.5` with a z-calibrated mean-shift threshold:
+  `tau_j = 1.95996 * sqrt(s_obs,j^2 / n_obs + s_int,j^2 / n_int)`.
+- Preserved v0 orientation behavior: significant shift means `target -> neighbor`; otherwise
+  default to `neighbor -> target`.
+- Audit on v0 seeds: active PC+greedy directed F1 `42.7 -> 48.8`, SHD `4.792 -> 4.479`.
+- Paper note: non-significant shift is a heuristic reverse decision, not proof of reverse
+  causality.
 
-Why:
-- The fixed threshold was not comparable across levels because sample size and variance change across the ladder.
-- The calibrated threshold makes the active PC baseline less dependent on a magic constant while keeping the experiment delta small.
+## Random directed-F1 floor
 
-Paper impact:
-- The PC+greedy method description should report the threshold formula when the paper is ready to update.
-- Existing PC+greedy headline numbers are stale until the active baseline is rerun.
-- The reverse-on-nonshift rule should be described as a heuristic, not as proof of the reverse direction.
-- On the v0 ladder seed map, the calibrated PC+greedy audit improved overall active directed F1 from `42.7` to `48.8` and SHD from `4.792` to `4.479`.
+- Random policy: sample a random topological order, then sample `m` uniformly from
+  `{0, ..., M}`, where `M = d(d-1)/2`.
+- Conditional expected directed F1:
+  `E[F1 | m] = k*m / [M*(m+k)] = rho*s / (rho+s)`, where `rho = k/M` and `s = m/M`.
+- Exact discrete floor:
+  `E[F1] = (1/(M+1)) * sum_{m=0}^{M} k*m / [M*(m+k)]`.
+- `rho/(1+2*rho)` is only the midpoint/Jensen envelope at `s=1/2`, not the exact floor.
+- Prior art: Petersen 2025 for random-graph F1 expectation; Reisach et al. 2021 for
+  structure-blind diagnostic baselines.
 
-Follow-up:
-- Rerun PC+greedy on the v1 ladder before updating result tables.
-- Consider an abstention-aware or likelihood-ratio orientation policy separately; do not mix that with this threshold change.
+## V1 scale-calibrated ladder
+
+- `ladder_levels()` now returns v1. The original v0 ladder is preserved as
+  `ladder_levels_v0()`; the active ladder is also available as `ladder_levels_v1()`.
+- V1 is a graph-scale/generalization ladder with calibrated random floor, not a full
+  factorial identifiability x statistics design.
+- Sample sizes and noise are fixed after L0 so graph scale is not confounded with decreasing
+  `n_obs`/`n_int`. Statistical scarcity should be a separate ablation.
+
+| L | d | k | rho | n_obs | n_int | noise | slack | E_random Dir-F1 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 4 | 3 | 0.500 | 50 | 25 | 0.5 | 2 | 0.215 |
+| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 1 | 0.196 |
+| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 1 | 0.173 |
+| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 1 | 0.155 |
+| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 0 | 0.133 |
+| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 0 | 0.117 |
+
+## Validation probes
+
+- Acceptance probe: `50/50` accepted instances at every v1 level with `max_attempts=1000`.
+- PC probe on 8 seeds: PC+greedy SHD rises `0.625 -> 9.375`; observational PC SHD rises
+  `3.000 -> 13.000`.
+- Interpretation: random floor is calibrated and PC error burden increases. Directed F1 need
+  not be perfectly monotone because it is ratio-sensitive and seed-limited.
+
+## Paper implications
+
+- V1 result tables are stale until random, PC, PC+greedy, and LLM panels are rerun on v1.
+- Report the exact random floor alongside directed F1 to separate skill from metric leakage.
+- Preserve v0 numbers as an audit/calibration story, not as final v1 benchmark evidence.

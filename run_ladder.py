@@ -393,7 +393,7 @@ class TraceWriter:
         self._fh.close()
 
 
-def ladder_levels() -> dict[int, LevelSpec]:
+def ladder_levels_v0() -> dict[int, LevelSpec]:
     return {
         0: LevelSpec(0, d=4, k=5, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
         1: LevelSpec(1, d=5, k=6, n_obs=25, n_int=15, noise_var=1.0, budget_slack=1),
@@ -402,6 +402,21 @@ def ladder_levels() -> dict[int, LevelSpec]:
         4: LevelSpec(4, d=5, k=6, n_obs=25, n_int=15, noise_var=1.0, budget_slack=0),
         5: LevelSpec(5, d=7, k=9, n_obs=15, n_int=10, noise_var=1.5, budget_slack=0),
     }
+
+
+def ladder_levels_v1() -> dict[int, LevelSpec]:
+    return {
+        0: LevelSpec(0, d=4, k=3, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
+        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+    }
+
+
+def ladder_levels() -> dict[int, LevelSpec]:
+    return ladder_levels_v1()
 
 
 def parse_levels(text: str) -> list[int]:

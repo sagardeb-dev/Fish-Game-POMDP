@@ -1,4 +1,4 @@
-"""Run only PC and PC+greedy on an existing ladder manifest."""
+"""Run only PC and PC+greedy on a ladder manifest or generated seed map."""
 
 from __future__ import annotations
 
@@ -57,8 +57,13 @@ SUMMARY_FIELDS = (
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run PC-only ladder from a manifest.")
-    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--manifest", default="")
     parser.add_argument("--out-dir", required=True)
+    parser.add_argument("--levels", default="0,1,2,3,4,5")
+    parser.add_argument("--seeds-per-level", type=int, default=8)
+    parser.add_argument("--preflight-seed", type=int, default=20260422)
+    parser.add_argument("--max-candidates-per-level", type=int, default=50000)
+    parser.add_argument("--alpha", type=float, default=0.05)
     return parser.parse_args()
 
 
@@ -132,15 +137,49 @@ def print_summary(rows: list[dict[str, Any]]) -> None:
 
 def main() -> None:
     args = parse_args()
-    manifest_path = Path(args.manifest)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     levels_catalog = rl.ladder_levels()
-    levels = [int(x) for x in manifest["levels"]]
-    seed_map = {int(k): [int(x) for x in v] for k, v in manifest["seed_map"].items()}
-    alpha = float(manifest.get("alpha", 0.05))
+    if args.manifest:
+        manifest_path = Path(args.manifest)
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        levels = [int(x) for x in manifest["levels"]]
+        seed_map = {int(k): [int(x) for x in v] for k, v in manifest["seed_map"].items()}
+        alpha = float(manifest.get("alpha", args.alpha))
+        manifest_label = str(manifest_path)
+    else:
+        levels = rl.parse_levels(args.levels)
+        seed_map = rl.build_seed_map_preflight(
+            levels_catalog,
+            levels,
+            args.seeds_per_level,
+            args.preflight_seed,
+            args.max_candidates_per_level,
+        )
+        alpha = float(args.alpha)
+        manifest = {
+            "levels": levels,
+            "seeds_per_level": args.seeds_per_level,
+            "seed_map": {str(k): v for k, v in seed_map.items()},
+            "alpha": alpha,
+            "preflight_seed": args.preflight_seed,
+            "max_candidates_per_level": args.max_candidates_per_level,
+            "level_config": {
+                str(level_id): {
+                    "d": levels_catalog[level_id].d,
+                    "k": levels_catalog[level_id].k,
+                    "n_obs": levels_catalog[level_id].n_obs,
+                    "n_int": levels_catalog[level_id].n_int,
+                    "noise_var": levels_catalog[level_id].noise_var,
+                    "budget_slack": levels_catalog[level_id].budget_slack,
+                }
+                for level_id in levels
+            },
+        }
+        manifest_path = out_dir / "pc_only_manifest.json"
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+        manifest_label = f"generated:{manifest_path}"
 
     rows: list[dict[str, Any]] = []
     for level_id in levels:
@@ -182,7 +221,7 @@ def main() -> None:
     write_csv(long_csv, LONG_FIELDS, rows)
     write_csv(summary_csv, SUMMARY_FIELDS, summary)
 
-    print(f"manifest={manifest_path}")
+    print(f"manifest={manifest_label}")
     print(f"alpha={alpha} rows={len(rows)}")
     print_summary(summary)
     print(f"[done] long={long_csv}")

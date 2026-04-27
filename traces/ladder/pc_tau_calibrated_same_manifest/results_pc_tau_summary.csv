@@ -1,0 +1,13 @@
+panel,level,method,model,n_total,n_success,n_failed,skeleton_f1_mean,skeleton_f1_std,skeleton_f1_ci95_low,skeleton_f1_ci95_high,directed_f1_mean,directed_f1_std,directed_f1_ci95_low,directed_f1_ci95_high,dag_shd_mean,dag_shd_std,dag_shd_ci95_low,dag_shd_ci95_high,efficiency_mean,efficiency_std,efficiency_ci95_low,efficiency_ci95_high,submit_directed_mean,submit_undirected_mean,interventions_used_mean,total_actions_mean,stats_actions_mean,intervene_actions_mean,submit_actions_mean,sanitized_overlap_count_mean
+active,0,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+active,1,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+active,2,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+active,3,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+active,4,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+active,5,pc_greedy,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,0,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,1,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,2,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,3,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,4,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,
+observational,5,pc,baseline,8,0,8,,,,,,,,,,,,,,,,,,,,,,,,

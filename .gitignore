@@ -14,8 +14,7 @@ wheels/
 .env.*
 
 # Generated output
-traces/
-
+.pytest-tmp/
 # Caches
 .pytest_cache/
 .mypy_cache/

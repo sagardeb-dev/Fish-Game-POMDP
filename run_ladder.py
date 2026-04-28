@@ -47,8 +47,9 @@ from causal_discovery.agents.stats_tools import (  # noqa: E402
 )
 
 
-SHIFT_THRESHOLD = 0.5
+MEAN_SHIFT_Z_975 = 1.959963984540054
 INTERVENTION_OFFSET = 3.0
+PC_GREEDY_ORIENTATION_RULE = "z_calibrated_mean_shift"
 
 ACTION_NAMES = (
     "intervene",
@@ -392,7 +393,7 @@ class TraceWriter:
         self._fh.close()
 
 
-def ladder_levels() -> dict[int, LevelSpec]:
+def ladder_levels_v0() -> dict[int, LevelSpec]:
     return {
         0: LevelSpec(0, d=4, k=5, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
         1: LevelSpec(1, d=5, k=6, n_obs=25, n_int=15, noise_var=1.0, budget_slack=1),
@@ -401,6 +402,21 @@ def ladder_levels() -> dict[int, LevelSpec]:
         4: LevelSpec(4, d=5, k=6, n_obs=25, n_int=15, noise_var=1.0, budget_slack=0),
         5: LevelSpec(5, d=7, k=9, n_obs=15, n_int=10, noise_var=1.5, budget_slack=0),
     }
+
+
+def ladder_levels_v1() -> dict[int, LevelSpec]:
+    return {
+        0: LevelSpec(0, d=4, k=3, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
+        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
+        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+    }
+
+
+def ladder_levels() -> dict[int, LevelSpec]:
+    return ladder_levels_v1()
 
 
 def parse_levels(text: str) -> list[int]:
@@ -528,6 +544,10 @@ def would_create_cycle(directed: set[tuple[int, int]], src: int, dst: int) -> bo
     return False
 
 
+def mean_shift_threshold(obs_var: float, n_obs: int, int_var: float, n_int: int) -> float:
+    return MEAN_SHIFT_Z_975 * math.sqrt(obs_var / n_obs + int_var / n_int)
+
+
 def _sanitize_submission_edges(
     directed_edges: tuple[tuple[int, int], ...] | list[tuple[int, int]],
     undirected_edges: tuple[tuple[int, int], ...] | list[tuple[int, int]],
@@ -551,8 +571,11 @@ def resolve_with_interventions(
     env: BenchmarkEnv,
     directed: set[tuple[int, int]],
     undirected: set[tuple[int, int]],
-    mu_obs: np.ndarray,
+    obs_data: np.ndarray,
 ) -> int:
+    mu_obs = obs_data.mean(axis=0)
+    obs_var = obs_data.var(axis=0, ddof=1)
+    n_obs = obs_data.shape[0]
     used = 0
     while undirected and env.remaining_budget > 0:
         degree: dict[int, int] = {}
@@ -564,9 +587,17 @@ def resolve_with_interventions(
         samples = env.intervene(var=target, value=value)
         used += 1
         mu_int = samples.mean(axis=0)
+        int_var = samples.var(axis=0, ddof=1)
+        n_int = samples.shape[0]
         for edge in [edge for edge in undirected if target in edge]:
             other = edge[1] if edge[0] == target else edge[0]
-            shifted = abs(mu_int[other] - mu_obs[other]) > SHIFT_THRESHOLD
+            threshold = mean_shift_threshold(
+                float(obs_var[other]),
+                n_obs,
+                float(int_var[other]),
+                n_int,
+            )
+            shifted = abs(mu_int[other] - mu_obs[other]) > threshold
             candidate = (target, other) if shifted else (other, target)
             if would_create_cycle(directed, *candidate):
                 continue
@@ -677,12 +708,11 @@ def run_pc_greedy_active(instance, runtime_seed: int, alpha: float):
 
     env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
     data = env.observe()
-    mu_obs = data.mean(axis=0)
     cg = pc(data, alpha=alpha, indep_test="fisherz", show_progress=False, verbose=False)
     directed_frozen, undirected_frozen = parse_causallearn_endpoint_matrix(cg.G.graph)
     directed = set(directed_frozen)
     undirected = set(undirected_frozen)
-    _ = resolve_with_interventions(env, directed, undirected, mu_obs)
+    _ = resolve_with_interventions(env, directed, undirected, data)
     submission = GraphSubmission(
         num_nodes=instance.config.d,
         directed_edges=frozenset(directed),
@@ -1154,6 +1184,9 @@ def main() -> None:
             "seeds_per_level": args.seeds_per_level,
             "seed_map": {str(k): v for k, v in seed_map.items()},
             "alpha": args.alpha,
+            "pc_greedy_orientation_rule": PC_GREEDY_ORIENTATION_RULE,
+            "pc_greedy_shift_z": MEAN_SHIFT_Z_975,
+            "pc_greedy_intervention_offset": INTERVENTION_OFFSET,
             "max_steps_raw": args.max_steps_raw,
             "max_steps_stats": args.max_steps_stats,
         }

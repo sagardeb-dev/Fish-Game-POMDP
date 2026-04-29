@@ -1,0 +1,105 @@
+{
+  "generated_at_utc": "20260429T052111Z",
+  "output_dir": "reports\\figure_prototypes\\20260429T052111Z",
+  "sources": [
+    "traces\\ladder\\deepseek_v4_flash_ladder_2seed\\events.jsonl",
+    "traces\\ladder\\deepseek_v4_flash_ladder_2seed\\results_long.csv",
+    "traces\\ladder\\full_ladder_toolcall_run1\\events.jsonl",
+    "traces\\ladder\\full_ladder_toolcall_run1\\results_long.csv",
+    "traces\\ladder\\sonnet46_full_ladder_run1\\events.jsonl",
+    "traces\\ladder\\sonnet46_full_ladder_run1\\results_long.csv",
+    "traces\\ladder\\sonnet46_provider_smoke\\events.jsonl",
+    "traces\\ladder\\sonnet46_provider_smoke\\results_long.csv"
+  ],
+  "figures": {
+    "hidden_agent_asymmetry": [
+      "reports\\figure_prototypes\\20260429T052111Z\\01_hidden_agent_asymmetry.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\01_hidden_agent_asymmetry.png"
+    ],
+    "layered_scoring_contract": [
+      "reports\\figure_prototypes\\20260429T052111Z\\02_layered_scoring_contract.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\02_layered_scoring_contract.png"
+    ],
+    "dag_cpdag_intervention": [
+      "reports\\figure_prototypes\\20260429T052111Z\\03_dag_cpdag_intervention.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\03_dag_cpdag_intervention.png"
+    ],
+    "representative_graph_output": [
+      "reports\\figure_prototypes\\20260429T052111Z\\04_representative_graph_output.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\04_representative_graph_output.png"
+    ],
+    "random_floor_density": [
+      "reports\\figure_prototypes\\20260429T052111Z\\05_random_floor_density.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\05_random_floor_density.png"
+    ],
+    "precision_recall_shd": [
+      "reports\\figure_prototypes\\20260429T052111Z\\06_precision_recall_shd.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\06_precision_recall_shd.png"
+    ],
+    "active_gain": [
+      "reports\\figure_prototypes\\20260429T052111Z\\07_active_gain.pdf",
+      "reports\\figure_prototypes\\20260429T052111Z\\07_active_gain.png"
+    ]
+  },
+  "notes": [
+    "Prototype artifacts only; do not cite these as final paper numbers.",
+    "The final figures should be regenerated after prompts, ladder, and seed map are locked.",
+    "Aggregate result figures use gpt-5.4 and claude-sonnet-4-6 traces; no gpt-5.5 ladder trace was found.",
+    "The representative graph uses the newer edge-complete DeepSeek trace because older GPT/Sonnet events do not store submitted edge lists."
+  ],
+  "representative_graph": {
+    "status": "data-derived",
+    "level": 0,
+    "seed": 1276453582,
+    "source_trace": "deepseek_v4_flash_ladder_2seed",
+    "true_edges": "X0->X3, X1->X0, X3->X2",
+    "optimal_intervention_set": [
+      1
+    ],
+    "pc_directed_edges": "X0->X3, X1->X0, X3->X2",
+    "llm_directed_edges": "X0->X1, X0->X2, X1->X2, X2->X3"
+  },
+  "random_floor": {
+    "status": "data-derived",
+    "source": "traces\\ladder\\random_density_probe\\results_random_dag_summary.csv"
+  },
+  "precision_recall_shd": {
+    "status": "data-derived",
+    "rows": 287
+  },
+  "active_gain": {
+    "status": "data-derived",
+    "pairs": [
+      {
+        "label": "PC",
+        "obs": 0.136408152033152,
+        "active": 0.4268945175195175,
+        "n": 48
+      },
+      {
+        "label": "raw / GPT",
+        "obs": 0.22638183575683576,
+        "active": 0.22910907318802054,
+        "n": 48
+      },
+      {
+        "label": "stats / GPT",
+        "obs": 0.13346109908609907,
+        "active": 0.18829064454064456,
+        "n": 48
+      },
+      {
+        "label": "raw / Sonnet",
+        "obs": 0.36131470387851633,
+        "active": 0.3167598973109893,
+        "n": 48
+      },
+      {
+        "label": "stats / Sonnet",
+        "obs": 0.15365039632874425,
+        "active": 0.27973326909497126,
+        "n": 47
+      }
+    ]
+  }
+}

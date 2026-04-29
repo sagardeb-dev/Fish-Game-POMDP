@@ -9,8 +9,6 @@ import math
 import os
 import sys
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,13 +16,13 @@ from typing import Any
 
 import numpy as np
 from dotenv import load_dotenv
-from openai import OpenAI
 
 SRC = Path(__file__).resolve().parent / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 from causal_discovery import (  # noqa: E402
+    LiteLLMJSONPolicyModel,
     BenchmarkEnv,
     CorrelationAction,
     GraphSubmission,
@@ -38,7 +36,14 @@ from causal_discovery import (  # noqa: E402
     build_benchmark_instance,
     make_v1_config,
     parse_causallearn_endpoint_matrix,
+    provider_for_model,
     score_submission,
+)
+from causal_discovery.agents.tool_schema import (  # noqa: E402
+    ACTION_NAMES,
+    allowed_actions_for_method,
+    make_action_response_schema,
+    make_action_tool,
 )
 from causal_discovery.agents.stats_tools import (  # noqa: E402
     correlation,
@@ -50,118 +55,6 @@ from causal_discovery.agents.stats_tools import (  # noqa: E402
 MEAN_SHIFT_Z_975 = 1.959963984540054
 INTERVENTION_OFFSET = 3.0
 PC_GREEDY_ORIENTATION_RULE = "z_calibrated_mean_shift"
-
-ACTION_NAMES = (
-    "intervene",
-    "correlation",
-    "partial_correlation",
-    "independence_test",
-    "submit_graph",
-)
-
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-ANTHROPIC_VERSION = "2023-06-01"
-
-
-def make_action_response_schema(allowed_actions: frozenset[str]) -> dict[str, Any]:
-    unknown = allowed_actions.difference(ACTION_NAMES)
-    if unknown:
-        raise ValueError(f"Unknown action names in tool schema: {sorted(unknown)}")
-    return {
-        "name": "causal_discovery_action",
-        "strict": True,
-        "schema": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": sorted(allowed_actions),
-                },
-                "var": {"type": ["integer", "null"]},
-                "value": {"type": ["number", "null"]},
-                "i": {"type": ["integer", "null"]},
-                "j": {"type": ["integer", "null"]},
-                "conditioning_on": {
-                    "type": "array",
-                    "items": {"type": "integer"},
-                },
-                "alpha": {"type": ["number", "null"]},
-                "directed_edges": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "minItems": 2,
-                        "maxItems": 2,
-                    },
-                },
-                "undirected_edges": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                        "minItems": 2,
-                        "maxItems": 2,
-                    },
-                },
-                "reasoning_summary": {"type": "string"},
-            },
-            "required": [
-                "action",
-                "var",
-                "value",
-                "i",
-                "j",
-                "conditioning_on",
-                "alpha",
-                "directed_edges",
-                "undirected_edges",
-                "reasoning_summary",
-            ],
-            "additionalProperties": False,
-        },
-    }
-
-
-def make_action_tool(allowed_actions: frozenset[str]) -> dict[str, Any]:
-    schema = make_action_response_schema(allowed_actions)
-    return {
-        "type": "function",
-        "function": {
-            "name": schema["name"],
-            "description": "Submit exactly one causal-discovery benchmark action.",
-            "strict": schema["strict"],
-            "parameters": schema["schema"],
-        },
-    }
-
-
-def allowed_actions_for_method(method: str) -> frozenset[str]:
-    if method == "llm_raw":
-        return frozenset({"intervene", "submit_graph"})
-    if method == "llm_raw_obs":
-        return frozenset({"submit_graph"})
-    if method == "llm_stats":
-        return frozenset(
-            {
-                "correlation",
-                "partial_correlation",
-                "independence_test",
-                "intervene",
-                "submit_graph",
-            }
-        )
-    if method == "llm_stats_obs":
-        return frozenset(
-            {
-                "correlation",
-                "partial_correlation",
-                "independence_test",
-                "submit_graph",
-            }
-        )
-    raise ValueError(f"Method does not use an LLM action schema: {method}")
-
 
 @dataclass(frozen=True, slots=True)
 class LevelSpec:
@@ -188,189 +81,6 @@ class WorkItem:
             f"panel={self.panel}|method={self.method}|level={self.level_id}|"
             f"seed={self.seed}|model={self.model}"
         )
-
-
-class OpenAIJSONPolicyModel:
-    """Strict single-object JSON model adapter for ladder runs."""
-
-    def __init__(self, client: OpenAI, model: str, allowed_actions: frozenset[str]) -> None:
-        self._client = client
-        self._model = model
-        self._action_schema = make_action_response_schema(allowed_actions)
-        self._action_tool = make_action_tool(allowed_actions)
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.total_tokens = 0
-        self.cache_creation_input_tokens = 0
-        self.cache_read_input_tokens = 0
-        self.calls = 0
-
-    def complete(
-        self,
-        *,
-        system_prompt: str,
-        session_prompt: str,
-        tool_history: tuple[ToolResult, ...],
-        remaining_budget: int,
-    ) -> str:
-        self.calls += 1
-        history_payload = [{"tool": item.tool, "payload": item.payload} for item in tool_history]
-        user_msg = (
-            f"Session data JSON: {session_prompt}\n"
-            f"Remaining budget: {remaining_budget}\n"
-            "Tool history JSON: "
-            f"{json.dumps(history_payload, separators=(',', ':'), ensure_ascii=True, allow_nan=False)}\n"
-            "Call the causal_discovery_action tool exactly once for your next action."
-        )
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_msg},
-            ],
-            tools=[self._action_tool],
-            tool_choice={
-                "type": "function",
-                "function": {"name": self._action_schema["name"]},
-            },
-            parallel_tool_calls=False,
-            temperature=0,
-        )
-        if response.usage is not None:
-            self.prompt_tokens += int(response.usage.prompt_tokens or 0)
-            self.completion_tokens += int(response.usage.completion_tokens or 0)
-            self.total_tokens += int(response.usage.total_tokens or 0)
-        message = response.choices[0].message
-        tool_calls = message.tool_calls or []
-        if len(tool_calls) != 1:
-            content = message.content or ""
-            snippet = content[:240].replace("\n", "\\n")
-            raise ValueError(
-                "Model must return exactly one causal_discovery_action tool call; "
-                f"got {len(tool_calls)}. content_prefix={snippet!r}"
-            )
-        tool_call = tool_calls[0]
-        if tool_call.function.name != self._action_schema["name"]:
-            raise ValueError(
-                "Unexpected tool call "
-                f"{tool_call.function.name!r}; expected {self._action_schema['name']!r}"
-            )
-        content = tool_call.function.arguments
-        try:
-            parsed = json.loads(content)
-        except json.JSONDecodeError as exc:
-            snippet = content[:240].replace("\n", "\\n")
-            raise ValueError(
-                "Model output JSON parse failed "
-                f"({type(exc).__name__}: {exc}). content_prefix={snippet!r}"
-            ) from exc
-        if not isinstance(parsed, dict):
-            raise ValueError("Model output must be a JSON object")
-        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
-
-
-class AnthropicJSONPolicyModel:
-    """Anthropic Messages API adapter with prompt caching on the stable prefix."""
-
-    def __init__(self, api_key: str, model: str, allowed_actions: frozenset[str]) -> None:
-        self._api_key = api_key
-        self._model = model
-        self._action_schema = make_action_response_schema(allowed_actions)
-        self.prompt_tokens = 0
-        self.completion_tokens = 0
-        self.total_tokens = 0
-        self.cache_creation_input_tokens = 0
-        self.cache_read_input_tokens = 0
-        self.calls = 0
-
-    def complete(
-        self,
-        *,
-        system_prompt: str,
-        session_prompt: str,
-        tool_history: tuple[ToolResult, ...],
-        remaining_budget: int,
-    ) -> str:
-        self.calls += 1
-        history_payload = [{"tool": item.tool, "payload": item.payload} for item in tool_history]
-        user_msg = (
-            f"Session data JSON: {session_prompt}\n"
-            f"Remaining budget: {remaining_budget}\n"
-            "Tool history JSON: "
-            f"{json.dumps(history_payload, separators=(',', ':'), ensure_ascii=True, allow_nan=False)}\n"
-            "Call the causal_discovery_action tool exactly once for your next action."
-        )
-        payload = {
-            "model": self._model,
-            "max_tokens": 2048,
-            "temperature": 0,
-            "system": [
-                {
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            "messages": [{"role": "user", "content": [{"type": "text", "text": user_msg}]}],
-            "tools": [
-                {
-                    "name": self._action_schema["name"],
-                    "description": "Submit exactly one causal-discovery benchmark action.",
-                    "input_schema": self._action_schema["schema"],
-                }
-            ],
-            "tool_choice": {"type": "tool", "name": self._action_schema["name"]},
-        }
-        response = self._post(payload)
-        usage = response.get("usage", {})
-        input_tokens = int(usage.get("input_tokens") or 0)
-        cache_creation = int(usage.get("cache_creation_input_tokens") or 0)
-        cache_read = int(usage.get("cache_read_input_tokens") or 0)
-        output_tokens = int(usage.get("output_tokens") or 0)
-        self.prompt_tokens += input_tokens + cache_creation + cache_read
-        self.completion_tokens += output_tokens
-        self.total_tokens += input_tokens + cache_creation + cache_read + output_tokens
-        self.cache_creation_input_tokens += cache_creation
-        self.cache_read_input_tokens += cache_read
-
-        tool_blocks = [
-            block
-            for block in response.get("content", [])
-            if isinstance(block, dict) and block.get("type") == "tool_use"
-        ]
-        if len(tool_blocks) != 1:
-            raise ValueError(
-                "Model must return exactly one causal_discovery_action tool call; "
-                f"got {len(tool_blocks)}"
-            )
-        block = tool_blocks[0]
-        if block.get("name") != self._action_schema["name"]:
-            raise ValueError(
-                f"Unexpected tool call {block.get('name')!r}; "
-                f"expected {self._action_schema['name']!r}"
-            )
-        parsed = block.get("input")
-        if not isinstance(parsed, dict):
-            raise ValueError("Anthropic tool input must be a JSON object")
-        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=True, allow_nan=False)
-
-    def _post(self, payload: dict[str, Any]) -> dict[str, Any]:
-        req = urllib.request.Request(
-            ANTHROPIC_API_URL,
-            data=json.dumps(payload, ensure_ascii=True, allow_nan=False).encode("utf-8"),
-            headers={
-                "content-type": "application/json",
-                "x-api-key": self._api_key,
-                "anthropic-version": ANTHROPIC_VERSION,
-            },
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=180) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Anthropic API HTTP {exc.code}: {body}") from exc
 
 
 class TraceWriter:
@@ -431,17 +141,6 @@ def parse_models(text: str) -> list[str]:
     if not models:
         raise ValueError("No models provided")
     return models
-
-
-def provider_for_model(model: str) -> str:
-    if model.startswith("claude-"):
-        return "anthropic"
-    if model.startswith(("gpt-", "o")):
-        return "openai"
-    raise ValueError(
-        f"Cannot infer provider for model {model!r}. "
-        "Use an OpenAI model starting with 'gpt-'/'o' or an Anthropic model starting with 'claude-'."
-    )
 
 
 def build_seed_map_from_file(path: Path, levels: list[int], seeds_per_level: int) -> dict[int, list[int]]:
@@ -636,6 +335,7 @@ def default_row(
         "total_tokens": "",
         "cache_creation_input_tokens": "",
         "cache_read_input_tokens": "",
+        "cost_usd": "",
         "true_edges": "",
         "cpdag_directed": "",
         "cpdag_undirected": "",
@@ -669,6 +369,27 @@ def enrich_instance_fields(row: dict[str, Any], instance) -> None:
     row["cpdag_undirected"] = len(instance.observational_ceiling.undirected_edges)
     row["opt_set_size"] = len(instance.optimal_intervention_set)
     row["budget"] = instance.intervention_budget
+
+
+def instance_metadata_payload(instance, level: LevelSpec, seed: int, runtime_seed: int) -> dict[str, Any]:
+    return {
+        "level": level.level_id,
+        "seed": seed,
+        "runtime_seed": runtime_seed,
+        "config": {
+            "d": level.d,
+            "k": level.k,
+            "n_obs": level.n_obs,
+            "n_int": level.n_int,
+            "noise_var": level.noise_var,
+            "budget_slack": level.budget_slack,
+        },
+        "true_dag_edges": sorted(instance.true_dag.edges),
+        "cpdag_directed_edges": sorted(instance.observational_ceiling.directed_edges),
+        "cpdag_undirected_edges": sorted(instance.observational_ceiling.undirected_edges),
+        "optimal_intervention_set": list(instance.optimal_intervention_set),
+        "intervention_budget": instance.intervention_budget,
+    }
 
 
 def enrich_score_fields(row: dict[str, Any], scores) -> None:
@@ -737,8 +458,6 @@ def run_llm(
     instance,
     runtime_seed: int,
     model_id: str,
-    openai_client: OpenAI | None,
-    anthropic_api_key: str,
     method: str,
     max_steps_raw: int,
     max_steps_stats: int,
@@ -760,25 +479,7 @@ def run_llm(
     sanitized_overlap_count = 0
 
     allowed_actions = allowed_actions_for_method(method)
-    provider = provider_for_model(model_id)
-    if provider == "openai":
-        if openai_client is None:
-            raise RuntimeError("OPENAI_API_KEY missing; required for OpenAI LLM methods")
-        model = OpenAIJSONPolicyModel(
-            client=openai_client,
-            model=model_id,
-            allowed_actions=allowed_actions,
-        )
-    elif provider == "anthropic":
-        if not anthropic_api_key:
-            raise RuntimeError("ANTHROPIC_API_KEY missing; required for Anthropic LLM methods")
-        model = AnthropicJSONPolicyModel(
-            api_key=anthropic_api_key,
-            model=model_id,
-            allowed_actions=allowed_actions,
-        )
-    else:
-        raise RuntimeError(f"Unsupported provider: {provider}")
+    model = LiteLLMJSONPolicyModel(model=model_id, allowed_actions=allowed_actions)
     names = tuple(f"X{i}" for i in range(instance.config.d))
     if is_stats:
         agent = LLMStatsAgent(
@@ -807,7 +508,11 @@ def run_llm(
     )
 
     for step in range(1, max_steps + 1):
-        action = agent.next_action(logical_budget if not allow_interventions else env.remaining_budget)
+        try:
+            action = agent.next_action(logical_budget if not allow_interventions else env.remaining_budget)
+        finally:
+            if model.last_call is not None and model.calls > total_actions:
+                trace.log("llm_model_call", work_key, {"step": step, **model.last_call})
         total_actions += 1
         trace.log("llm_action", work_key, {"step": step, "action_type": type(action).__name__})
 
@@ -834,6 +539,7 @@ def run_llm(
                     "var": action.var,
                     "value": action.value,
                     "rows": int(samples.shape[0]),
+                    "data": samples.tolist(),
                     "remaining_budget": logical_budget,
                 },
             )
@@ -1034,6 +740,7 @@ def summarize_results(rows: list[dict[str, Any]], out_csv: Path) -> None:
         "intervene_actions",
         "submit_actions",
         "sanitized_overlap_count",
+        "cost_usd",
     )
     grouped: dict[tuple[str, str, str, str], list[dict[str, Any]]] = {}
     for row in rows:
@@ -1208,7 +915,7 @@ def main() -> None:
     env_loaded = load_dotenv(env_file, override=True)
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
 
     work_items = make_work_items(levels, seed_map, models)
     required_providers = {
@@ -1216,7 +923,7 @@ def main() -> None:
         for item in work_items
         if item.method.startswith("llm_")
     }
-    if "openai" in required_providers and openai_client is None:
+    if "openai" in required_providers and not openai_api_key:
         raise RuntimeError(
             f"OPENAI_API_KEY missing; required for OpenAI model(s). "
             f"env_file={env_file} loaded={env_loaded}"
@@ -1224,6 +931,11 @@ def main() -> None:
     if "anthropic" in required_providers and not anthropic_api_key:
         raise RuntimeError(
             f"ANTHROPIC_API_KEY missing; required for Anthropic model(s). "
+            f"env_file={env_file} loaded={env_loaded}"
+        )
+    if "openrouter" in required_providers and not openrouter_api_key:
+        raise RuntimeError(
+            f"OPENROUTER_API_KEY missing; required for OpenRouter model(s). "
             f"env_file={env_file} loaded={env_loaded}"
         )
     total = len(work_items)
@@ -1256,6 +968,11 @@ def main() -> None:
                 )
             instance = instance_cache[cache_key]
             enrich_instance_fields(row, instance)
+            trace.log(
+                "instance_metadata",
+                item.key,
+                instance_metadata_payload(instance, level, item.seed, runtime_seed),
+            )
 
             if item.method == "pc":
                 submission, scores = run_pc_observational(instance, runtime_seed, args.alpha)
@@ -1264,6 +981,7 @@ def main() -> None:
                 row["total_tokens"] = 0
                 row["cache_creation_input_tokens"] = 0
                 row["cache_read_input_tokens"] = 0
+                row["cost_usd"] = 0.0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
@@ -1276,6 +994,7 @@ def main() -> None:
                 row["total_tokens"] = 0
                 row["cache_creation_input_tokens"] = 0
                 row["cache_read_input_tokens"] = 0
+                row["cost_usd"] = 0.0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
@@ -1288,6 +1007,7 @@ def main() -> None:
                 row["total_tokens"] = 0
                 row["cache_creation_input_tokens"] = 0
                 row["cache_read_input_tokens"] = 0
+                row["cost_usd"] = 0.0
                 row["total_actions"] = 0
                 row["stats_actions"] = 0
                 row["intervene_actions"] = 0
@@ -1298,8 +1018,6 @@ def main() -> None:
                     instance=instance,
                     runtime_seed=runtime_seed,
                     model_id=item.model,
-                    openai_client=openai_client,
-                    anthropic_api_key=anthropic_api_key,
                     method=item.method,
                     max_steps_raw=args.max_steps_raw,
                     max_steps_stats=args.max_steps_stats,
@@ -1311,6 +1029,7 @@ def main() -> None:
                 row["total_tokens"] = model_usage.total_tokens
                 row["cache_creation_input_tokens"] = model_usage.cache_creation_input_tokens
                 row["cache_read_input_tokens"] = model_usage.cache_read_input_tokens
+                row["cost_usd"] = model_usage.total_cost_usd
                 row["total_actions"] = diagnostics["total_actions"]
                 row["stats_actions"] = diagnostics["stats_actions"]
                 row["intervene_actions"] = diagnostics["intervene_actions"]
@@ -1331,6 +1050,8 @@ def main() -> None:
                 item.key,
                 {
                     "interventions_used": submission.interventions_used,
+                    "directed_edges": sorted(submission.directed_edges),
+                    "undirected_edges": sorted(submission.undirected_edges),
                     "directed_f1": row["directed_f1"],
                     "dag_shd": row["dag_shd"],
                 },

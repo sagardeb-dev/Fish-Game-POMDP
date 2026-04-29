@@ -1,0 +1,4 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+We asked whether an LLM agent, given budgeted hard interventions, can recover a causal DAG better than a structure-blind random baseline. On the v0 ladder, PC + greedy is strongest overall ($42.7\%$ directed F1, SHD $4.79$); the best LLM reaches $31.7\%$ directed F1 with SHD $7.25$; and the random baseline reaches $23.6\%$, high enough that weak LLM margins require caution. The precision--recall decomposition shows qualitatively different errors: PC under-commits with high precision, LLMs over-commit with lower precision, and stats-tool variants often abstain from intervention. ACDB is therefore a scaffold for tracking active causal discovery as models and benchmark calibration improve. The next version should lower the random floor, run the full correlation-summary condition, and inspect intervention-driven revisions.

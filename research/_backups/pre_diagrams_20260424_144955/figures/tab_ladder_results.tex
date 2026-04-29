@@ -1,0 +1,50 @@
+% Headline overall results. Numbers are weighted averages across L0-L5, sourced
+% from README.md "Weighted overall averages across levels" (the deduplicated,
+% authoritative figures). Precision/recall decomposition is included so that
+% the over-commit vs under-commit story in Section 5.1 is visible in the table.
+\begin{table}[t]
+\centering
+\caption{Headline results as weighted averages across ladder levels L0--L5.
+Skel~F1 is against the true CPDAG; Dir~P, Dir~R, Dir~F1 are against the true
+DAG; SHD is edge edit distance (reversal=1); $\eta$ is intervention efficiency
+against the precomputed optimal set. All values in \%; SHD is a mean edge count.
+Oracle submits the true DAG; PC + greedy is the strongest non-oracle active
+method. Directed precision and recall are reported separately because LLM
+and PC errors lie on different sides of the P/R trade-off (\S\ref{sec:results}).}
+\label{tab:ladder-overall}
+\small
+\begin{tabular}{llcccccc}
+\toprule
+Method & Model & Skel~F1 & Dir~P & Dir~R & Dir~F1 & SHD & $\eta$ \\
+\midrule
+\multicolumn{8}{l}{\textit{Observational panel (no interventions)}} \\
+\quad PC                 & --                 & 62.1 & 82.6 & 10.0 & 13.6 & 6.25 & -- \\
+\quad LLM (raw)          & GPT-5.4            & 65.7 & 74.1 & 19.2 & 22.6 & 9.40 & -- \\
+\quad LLM (stats)        & GPT-5.4            & 35.9 & 68.4 &  9.2 & 13.3 & 6.75 & -- \\
+\quad LLM (raw)          & Sonnet 4.6         & 57.7 & 38.9 & 34.5 & \textbf{36.1} & 7.46 & -- \\
+\quad LLM (stats)        & Sonnet 4.6         & 60.7 & 76.9 & 12.5 & 15.0 & 9.92 & -- \\
+\midrule
+\multicolumn{8}{l}{\textit{Active panel (hard-intervention budget)}} \\
+\quad Oracle             & --                 & 100.0 & 100.0 & 100.0 & 100.0 & 0.00 & 100.0 \\
+\quad PC + greedy        & --                 & 62.1 & 66.9 & 32.8 & \textbf{42.7} & \textbf{4.79} & 89.6 \\
+\quad LLM (raw)          & GPT-5.4            & 58.8 & 36.3 & 19.3 & 22.9 & 9.27 & 92.7 \\
+\quad LLM (stats)        & GPT-5.4            & 40.0 & 48.0 & 13.3 & 18.8 & 6.58 & 100.0 \\
+\quad LLM (raw)          & Sonnet 4.6         & 56.3 & 35.0 & 29.6 & 31.7 & 7.25 & 97.9 \\
+\quad LLM (stats)        & Sonnet 4.6         & 62.7 & 46.0 & 22.7 & 28.0 & 8.06 & 100.0 \\
+\midrule
+\multicolumn{8}{l}{\textit{Reference points}} \\
+\quad Random uniform DAG & --                 & 46.6 & 35.0 & 25.0 & 23.6 & 8.18 & -- \\
+\quad Correlation-only probe\textsuperscript{\dag} & GPT-5.4, Sonnet 4.6 & $\sim$70 & -- & -- & 0.0 & -- & -- \\
+\bottomrule
+\end{tabular}
+
+\vspace{2pt}
+\begin{flushleft}
+\footnotesize
+\textsuperscript{\dag}Prompt-restricted ablation: single-call graph submission
+from the correlation matrix only, with no interventions or tool calls.
+Skeleton F1 $\approx 70\%$; directed F1 $= 0$ under the prompt restriction,
+because the models withheld orientation when uncertain.
+Not a primary comparison. See Section~\ref{sec:corr-probe}.
+\end{flushleft}
+\end{table}

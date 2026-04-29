@@ -21,23 +21,26 @@ from typing import Any
 
 import numpy as np
 from dotenv import load_dotenv
-from openai import OpenAI
 
 SRC = Path(__file__).resolve().parent / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from causal_discovery import GraphSubmission, build_benchmark_instance, score_submission  # noqa: E402
+from causal_discovery import (  # noqa: E402
+    GraphSubmission,
+    LiteLLMJSONPolicyModel,
+    build_benchmark_instance,
+    provider_for_model,
+    score_submission,
+)
 from run_ladder import (  # noqa: E402
-    AnthropicJSONPolicyModel,
-    OpenAIJSONPolicyModel,
     config_from_level,
     enrich_instance_fields,
     enrich_score_fields,
+    instance_metadata_payload,
     ladder_levels,
     parse_levels,
     parse_models,
-    provider_for_model,
     would_create_cycle,
 )
 
@@ -68,6 +71,7 @@ LONG_FIELDS = (
     "total_tokens",
     "cache_creation_input_tokens",
     "cache_read_input_tokens",
+    "cost_usd",
     "true_edges",
     "cpdag_directed",
     "cpdag_undirected",
@@ -124,6 +128,7 @@ BEHAVIOR_METRICS = (
     "prompt_tokens",
     "completion_tokens",
     "total_tokens",
+    "cost_usd",
 )
 
 
@@ -350,35 +355,14 @@ def submission_from_model_payload(payload: dict[str, Any], d: int) -> tuple[Grap
 def make_model(
     *,
     model_id: str,
-    openai_client: OpenAI | None,
-    anthropic_api_key: str,
 ):
-    provider = provider_for_model(model_id)
-    if provider == "openai":
-        if openai_client is None:
-            raise RuntimeError("OPENAI_API_KEY missing; required for OpenAI model(s)")
-        return OpenAIJSONPolicyModel(
-            client=openai_client,
-            model=model_id,
-            allowed_actions=ALLOWED_ACTIONS,
-        )
-    if provider == "anthropic":
-        if not anthropic_api_key:
-            raise RuntimeError("ANTHROPIC_API_KEY missing; required for Anthropic model(s)")
-        return AnthropicJSONPolicyModel(
-            api_key=anthropic_api_key,
-            model=model_id,
-            allowed_actions=ALLOWED_ACTIONS,
-        )
-    raise RuntimeError(f"Unsupported provider: {provider}")
+    return LiteLLMJSONPolicyModel(model=model_id, allowed_actions=ALLOWED_ACTIONS)
 
 
 def run_corr_obs_llm(
     *,
     instance: Any,
     model_id: str,
-    openai_client: OpenAI | None,
-    anthropic_api_key: str,
     trace: EventWriter | None,
     work_key: str,
 ) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
@@ -386,8 +370,6 @@ def run_corr_obs_llm(
     corr, std = corr_std_summary(instance.observational_data)
     model = make_model(
         model_id=model_id,
-        openai_client=openai_client,
-        anthropic_api_key=anthropic_api_key,
     )
     system_prompt = build_corr_obs_system_prompt()
     session_prompt = build_corr_obs_session_prompt(
@@ -407,12 +389,16 @@ def run_corr_obs_llm(
                 "corr": [[float(value) for value in row] for row in corr],
             },
         )
-    raw = model.complete(
-        system_prompt=system_prompt,
-        session_prompt=session_prompt,
-        tool_history=tuple(),
-        remaining_budget=0,
-    )
+    try:
+        raw = model.complete(
+            system_prompt=system_prompt,
+            session_prompt=session_prompt,
+            tool_history=tuple(),
+            remaining_budget=0,
+        )
+    finally:
+        if trace is not None and model.last_call is not None:
+            trace.log("llm_model_call", work_key, {"step": 1, **model.last_call})
     payload = json.loads(raw)
     submission, diagnostics = submission_from_model_payload(payload, instance.config.d)
     scores = score_submission(instance, submission)
@@ -468,6 +454,7 @@ def default_row(
         "total_tokens": "",
         "cache_creation_input_tokens": "",
         "cache_read_input_tokens": "",
+        "cost_usd": "",
         "true_edges": "",
         "cpdag_directed": "",
         "cpdag_undirected": "",
@@ -625,10 +612,10 @@ def main() -> None:
     env_loaded = load_dotenv(Path(args.env_file), override=True)
     openai_api_key = os.getenv("OPENAI_API_KEY", "")
     anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    openai_client = OpenAI(api_key=openai_api_key) if openai_api_key else None
+    openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "")
 
     required_providers = {provider_for_model(model) for model in models}
-    if "openai" in required_providers and openai_client is None:
+    if "openai" in required_providers and not openai_api_key:
         raise RuntimeError(
             f"OPENAI_API_KEY missing; required for OpenAI model(s). "
             f"env_file={args.env_file} loaded={env_loaded}"
@@ -636,6 +623,11 @@ def main() -> None:
     if "anthropic" in required_providers and not anthropic_api_key:
         raise RuntimeError(
             f"ANTHROPIC_API_KEY missing; required for Anthropic model(s). "
+            f"env_file={args.env_file} loaded={env_loaded}"
+        )
+    if "openrouter" in required_providers and not openrouter_api_key:
+        raise RuntimeError(
+            f"OPENROUTER_API_KEY missing; required for OpenRouter model(s). "
             f"env_file={args.env_file} loaded={env_loaded}"
         )
 
@@ -687,11 +679,15 @@ def main() -> None:
                     )
                 instance = instance_cache[cache_key]
                 enrich_instance_fields(row, instance)
+                if trace is not None:
+                    trace.log(
+                        "instance_metadata",
+                        work_key,
+                        instance_metadata_payload(instance, level, seed, runtime_seed),
+                    )
                 submission, scores, model_usage, diagnostics = run_corr_obs_llm(
                     instance=instance,
                     model_id=model_id,
-                    openai_client=openai_client,
-                    anthropic_api_key=anthropic_api_key,
                     trace=trace,
                     work_key=work_key,
                 )
@@ -700,6 +696,7 @@ def main() -> None:
                 row["total_tokens"] = model_usage.total_tokens
                 row["cache_creation_input_tokens"] = model_usage.cache_creation_input_tokens
                 row["cache_read_input_tokens"] = model_usage.cache_read_input_tokens
+                row["cost_usd"] = model_usage.total_cost_usd
                 row["interventions_used"] = submission.interventions_used
                 row["submit_directed"] = len(submission.directed_edges)
                 row["submit_undirected"] = len(submission.undirected_edges)

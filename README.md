@@ -1,380 +1,271 @@
-# Causal Discovery Benchmark (V1)
+# ACDB: Active Causal Discovery Benchmark
 
-This repository implements an **active causal discovery benchmark** where an agent must recover a hidden DAG from observational data plus budget-limited interventions.
+ACDB is a scientific instrument for evaluating **agentic causal reasoning**. The benchmark does not only ask whether an agent recovers a causal graph. It fixes a hidden linear-Gaussian SCM, exposes limited evidence and actions to the agent, and scores separate layers of failure: adjacency recovery, observationally identifiable orientation, full DAG recovery, and intervention-budget use.
 
-## Problem Statement
+The key asymmetry is intentional: the evaluator can construct the true DAG, CPDAG/MEC, SCM metadata, and minimum identifying intervention set; the agent only sees observations, optional tools, optional interventions, and a budget.
 
-Given samples from an unknown linear-Gaussian SCM over `d` observed variables, the agent must infer the causal graph:
+![Evaluator state vs agent-visible state](reports/figure_prototypes/20260429T052111Z/01_hidden_agent_asymmetry.png)
 
-- Observational phase: infer what is identifiable up to Markov equivalence (CPDAG ceiling).
-- Active phase: use interventions to resolve ambiguous orientations and recover the true DAG.
+## Current Status
 
-### Core Research Question
-
-Can an LLM policy discover causal structure under constrained interventions, and how does it compare to classical structure-learning baselines under the same environment and scoring contract?
+- The active code path uses the **v1 scale-calibrated ladder**.
+- The original v0 ladder is preserved in code as `ladder_levels_v0()`.
+- Full GPT-5.4 and Claude Sonnet 4.6 results are **v0 results** and should be treated as calibration/audit evidence, not final v1 benchmark evidence.
+- The only v1 LLM probe currently committed is a **partial DeepSeek V4 Flash smoke run** on OpenRouter.
+- Final v1 results still need fresh random, PC/PC+greedy, and LLM runs on the locked v1 ladder and seed map.
 
 ## Benchmark Contract
 
-### V1 assumptions
+ACDB instances are generated from fully observed, causally sufficient, linear-Gaussian SCMs with perfect single-node hard interventions. Graphs and SCMs are filtered for validity and faithfulness before sampling data.
 
-- Linear-Gaussian SCM
-- Causal sufficiency (no latent confounders)
-- Causal Markov + faithfulness filtering
-- Perfect single-node hard interventions `do(X_i = v)`
-- Full observability of node values, no graph leakage
+Agent actions:
 
-### Agent interface
+- `observe()` returns the observational panel once.
+- `intervene(var, value)` returns interventional rows while budget remains.
+- `submit_graph(directed_edges, undirected_edges)` terminates the episode.
 
-- `observe() -> observational_data` (one-time only)
-- `intervene(var, value) -> interventional_rows` (budgeted)
-- `submit_graph(...) -> terminal submission`
+All agents submit the same `GraphSubmission` object. This shared contract is used by LLM policies, PC baselines, random baselines, and oracle.
 
-### Submission format
+![DAG, CPDAG, and intervention example](reports/figure_prototypes/20260429T052111Z/03_dag_cpdag_intervention.png)
 
-All methods submit `GraphSubmission`:
+## Scoring Layers
 
-- `directed_edges`
-- `undirected_edges` (allowed, unresolved)
-- `interventions_used`
+Every metric has a theoretical referent:
 
-This is shared across LLM, PC baselines, and oracle.
+- `skeleton_f1`: adjacency recovery.
+- `compelled_f1`: observationally identifiable directions in the CPDAG.
+- `directed_f1` and `dag_shd`: full DAG recovery.
+- `efficiency`: intervention use relative to the minimum identifying intervention set.
 
-### Scoring layers
+![Layered scoring contract](reports/figure_prototypes/20260429T052111Z/02_layered_scoring_contract.png)
 
-- **Observational layer** (against true CPDAG):
-  - `skeleton_f1`
-  - `compelled_f1`
-- **DAG layer** (against true DAG):
-  - `directed_f1`
-  - `dag_shd`
-- **Efficiency layer**:
-  - intervention efficiency vs. precomputed minimum intervention set
+Full scoring details: [`docs/specs/scoring.md`](docs/specs/scoring.md)
 
-Full scoring spec: [`docs/specs/scoring.md`](docs/specs/scoring.md)
+## Instance Generation
 
-## High-Level Pseudocode
-
-Full spec: [`docs/specs/causal-discovery-v1-pseudocode.md`](docs/specs/causal-discovery-v1-pseudocode.md)
-
-### 1) Build benchmark instance
+At a high level:
 
 ```text
-BUILD_BENCHMARK_INSTANCE(config):
-  repeat:
-    dag = SAMPLE_RANDOM_DAG(d, k)
-    cpdag = DAG_TO_CPDAG(dag)
-    if REJECT_GRAPH(dag, cpdag): continue
-
-    scm = PARAMETERIZE_LINEAR_GAUSSIAN_SCM(dag, weight_range, noise_var)
-    if REJECT_SCM(scm, faithfulness_eps): continue
-
-    optimal_set = COMPUTE_MIN_INTERVENTION_SET(dag, cpdag)
-    if REJECT_INTERVENTION_PROFILE(optimal_set, cpdag): continue
-
-    permute labels
-    obs_data = SAMPLE_OBSERVATIONAL_DATA(scm_public, n_obs)
-    budget = |optimal_set| + budget_slack
-
-    return instance(
-      true_dag, cpdag, scm, obs_data, optimal_set, budget, metadata
-    )
+sample DAG
+compute CPDAG / MEC
+reject invalid or poorly identified graphs
+parameterize linear-Gaussian SCM
+reject unfaithful SCMs
+compute minimum identifying intervention set
+permute labels
+sample observational data
+run agent episode
+score submission
 ```
 
-### 2) Runtime session
+Full pseudocode: [`docs/specs/causal-discovery-v1-pseudocode.md`](docs/specs/causal-discovery-v1-pseudocode.md)
+
+## V1 Ladder
+
+The current ladder is a graph-scale/generalization ladder. After L0, sample sizes and noise are held fixed so graph scale is not confounded with decreasing statistical power.
+
+| Level | d | k | density rho | n_obs | n_int | noise_var | slack | exact random Dir-F1 floor |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 0 | 4 | 3 | 0.500 | 50 | 25 | 0.5 | 2 | 0.215 |
+| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 1 | 0.196 |
+| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 1 | 0.173 |
+| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 1 | 0.155 |
+| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 0 | 0.133 |
+| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 0 | 0.117 |
+
+Random floor note: for maximum possible directed edges `M=d(d-1)/2`, true edge count `k`, and random submitted edge count `m`, the conditional directed-F1 floor is
 
 ```text
-RUNTIME_SESSION(instance, agent):
-  obs = observe()   # one-time
-  while budget > 0:
-    action = agent.next_action()
-    if action is intervene:
-      return n_int rows sampled under do(var=value)
-      budget -= 1
-    elif action is submit_graph:
-      break
-  score_submission(instance, submission)
+E[F1 | m] = k*m / [M*(m+k)]
 ```
 
-### 3) Score submission
+with the exact discrete floor
 
 ```text
-SCORE(instance, submission):
-  observational metrics against CPDAG
-  directed metrics + SHD against true DAG
-  efficiency against |optimal_intervention_set|
+E[F1] = (1/(M+1)) * sum_{m=0}^{M} k*m / [M*(m+k)]
 ```
 
-## Ladder Configuration
+This is why v1 reports a random floor beside directed F1 instead of treating random as a normal competitor.
 
-The ladder has 6 levels:
+![Random floor density calibration](reports/figure_prototypes/20260429T052111Z/05_random_floor_density.png)
 
-- L0 tutorial: `d=4, k=5, n_obs=50, n_int=25, noise=0.5, slack=2`
-- L1 standard: `d=5, k=6, n_obs=25, n_int=15, noise=1.0, slack=1`
-- L2 statistical: `d=5, k=6, n_obs=15, n_int=10, noise=1.5, slack=1`
-- L3 structural: `d=7, k=9, n_obs=25, n_int=15, noise=1.0, slack=1`
-- L4 pressure: `d=5, k=6, n_obs=25, n_int=15, noise=1.0, slack=0`
-- L5 hard: `d=7, k=9, n_obs=15, n_int=10, noise=1.5, slack=0`
+## Supported Policies
 
-Methods:
+Observational panel:
 
-- Observational panel: `pc`, `llm_raw_obs`, `llm_stats_obs`
-- Active panel: `pc_greedy`, `llm_raw`, `llm_stats`, `oracle`
+- `pc`: PC algorithm, observational only.
+- `llm_raw_obs`: raw observational rows, no statistical tools, no interventions.
+- `llm_stats_obs`: observational rows plus statistical tools.
 
-## Results
+Active panel:
 
-Two full ladder runs are available:
+- `pc_greedy`: PC CPDAG followed by budgeted greedy interventions.
+- `llm_raw`: raw observational rows plus intervention actions.
+- `llm_stats`: raw rows, statistical tools, and intervention actions.
+- `oracle`: true DAG ceiling.
+
+The LLM layer uses LiteLLM through `LiteLLMJSONPolicyModel`, with provider routing for OpenAI, Anthropic, and OpenRouter model strings.
+
+## Figure Prototypes
+
+The current figure prototypes are committed under:
+
+[`reports/figure_prototypes/20260429T052111Z`](reports/figure_prototypes/20260429T052111Z)
+
+They are narrative artifacts, not final paper figures. They intentionally mix conceptual diagrams, archived v0 aggregate plots, and the partial v1 DeepSeek graph-output trace where edge lists are available.
+
+Representative graph-output visualization:
+
+![Representative graph output comparison](reports/figure_prototypes/20260429T052111Z/04_representative_graph_output.png)
+
+Aggregate v0 failure-mode visualization:
+
+![Precision recall and SHD](reports/figure_prototypes/20260429T052111Z/06_precision_recall_shd.png)
+
+Paired active-gain visualization:
+
+![Paired active gain](reports/figure_prototypes/20260429T052111Z/07_active_gain.png)
+
+Interpretation caveat: active gain shows whether the active interface improves final directed-DAG recovery on paired instances. It does not by itself prove correct experimental reasoning; intervention choice and intervention interpretation require trace-level diagnostics.
+
+## Archived V0 Results
+
+These are the full v0 ladder runs. They are preserved because they motivated the v1 calibration work, especially the random-floor and density-leakage analysis.
+
+Sources:
 
 - GPT-5.4: [`traces/ladder/full_ladder_toolcall_run1/results_long.csv`](traces/ladder/full_ladder_toolcall_run1/results_long.csv)
 - Claude Sonnet 4.6: [`traces/ladder/sonnet46_full_ladder_run1/results_long.csv`](traces/ladder/sonnet46_full_ladder_run1/results_long.csv)
+- Random baseline: [`traces/ladder/random_uniform_baseline/results_random_dag_summary.csv`](traces/ladder/random_uniform_baseline/results_random_dag_summary.csv)
 
-Each run covers the same ladder structure:
+Rows are deduplicated by `(level, seed, panel, method, model)` and successful rows are averaged.
 
-- Planned jobs: `336`
-- Unique completed jobs: `336`
-- GPT-5.4 successful jobs: `336`
-- Sonnet 4.6 successful jobs: `335` (`1` failed `llm_stats` active row)
+### GPT-5.4 V0 Overall
 
-Note: resumed runs can append retry attempts to `results_long.csv`. The tables below deduplicate by `(level, seed, panel, method, model)` and keep the latest attempt. The generated `results_summary.csv` should not be treated as authoritative for resumed runs until summary deduplication is fixed.
+| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
+| observational | `llm_raw_obs` | 48 | 65.7 | 74.1 | 19.2 | 22.6 | 9.396 | 100.0 |
+| observational | `llm_stats_obs` | 48 | 35.9 | 68.4 | 9.2 | 13.3 | 6.750 | 100.0 |
+| active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
+| active | `llm_raw` | 48 | 58.8 | 36.3 | 19.3 | 22.9 | 9.271 | 92.7 |
+| active | `llm_stats` | 48 | 40.0 | 48.0 | 13.3 | 18.8 | 6.583 | 100.0 |
+| active | `oracle` | 48 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
 
-### GPT-5.4: observational panel
+### Claude Sonnet 4.6 V0 Overall
 
-All precision/recall/F1 values are percentages.
+| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
+| observational | `llm_raw_obs` | 48 | 57.7 | 38.9 | 34.5 | 36.1 | 7.458 | 100.0 |
+| observational | `llm_stats_obs` | 48 | 60.7 | 76.9 | 12.5 | 15.0 | 9.917 | 100.0 |
+| active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
+| active | `llm_raw` | 48 | 56.3 | 35.0 | 29.6 | 31.7 | 7.250 | 97.9 |
+| active | `llm_stats` | 47 | 62.7 | 46.0 | 22.7 | 28.0 | 8.064 | 100.0 |
+| active | `oracle` | 48 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
 
-| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 0 | `llm_raw_obs` | 82.1 | 70.0 | 75.1 | 42.9 | 37.5 | 39.8 | 3.875 |
-| 0 | `llm_stats_obs` | 88.1 | 60.0 | 66.9 | 41.7 | 10.0 | 12.3 | 5.000 |
-| 0 | `pc` | 100.0 | 67.5 | 79.7 | 78.1 | 12.5 | 13.9 | 4.375 |
-| 1 | `llm_raw_obs` | 65.1 | 62.5 | 60.9 | 60.6 | 22.9 | 27.7 | 7.000 |
-| 1 | `llm_stats_obs` | 65.6 | 27.1 | 35.5 | 81.2 | 10.4 | 13.4 | 6.375 |
-| 1 | `pc` | 96.9 | 54.2 | 68.8 | 68.8 | 16.7 | 23.8 | 5.125 |
-| 2 | `llm_raw_obs` | 65.8 | 95.8 | 76.2 | 96.9 | 6.2 | 7.5 | 9.000 |
-| 2 | `llm_stats_obs` | 70.8 | 18.8 | 28.8 | 68.8 | 6.2 | 9.4 | 6.250 |
-| 2 | `pc` | 100.0 | 31.2 | 46.7 | 93.8 | 2.1 | 3.1 | 5.875 |
-| 3 | `llm_raw_obs` | 55.2 | 66.7 | 54.6 | 82.3 | 13.9 | 18.8 | 14.250 |
-| 3 | `llm_stats_obs` | 81.2 | 13.9 | 23.0 | 81.2 | 6.9 | 11.4 | 8.625 |
-| 3 | `pc` | 100.0 | 48.6 | 65.0 | 89.6 | 11.1 | 17.2 | 8.000 |
-| 4 | `llm_raw_obs` | 68.1 | 81.2 | 71.2 | 79.8 | 20.8 | 24.4 | 7.500 |
-| 4 | `llm_stats_obs` | 87.5 | 25.0 | 38.4 | 68.8 | 14.6 | 21.9 | 5.375 |
-| 4 | `pc` | 96.9 | 50.0 | 65.4 | 71.9 | 14.6 | 20.0 | 5.250 |
-| 5 | `llm_raw_obs` | 52.5 | 72.2 | 56.3 | 82.1 | 13.9 | 17.7 | 14.750 |
-| 5 | `llm_stats_obs` | 68.8 | 13.9 | 23.0 | 68.8 | 6.9 | 11.8 | 8.875 |
-| 5 | `pc` | 97.5 | 31.9 | 46.9 | 93.8 | 2.8 | 3.8 | 8.875 |
+V0 interpretation:
 
-### GPT-5.4: active panel
+- PC+greedy provides the strongest non-oracle active reference.
+- LLMs show different precision/recall profiles from PC; F1 alone hides this.
+- Sonnet raw observational performance was strong in v0, but active access did not uniformly improve it.
+- The v0 random floor was high enough to motivate v1 density calibration.
 
-All precision/recall/F1/efficiency values are percentages.
+## V1 DeepSeek V4 Flash Probe
 
-| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD | Eff |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | `llm_raw` | 77.7 | 60.0 | 67.3 | 33.8 | 25.0 | 28.5 | 4.625 | 56.2 |
-| 0 | `llm_stats` | 82.9 | 65.0 | 72.2 | 42.3 | 27.5 | 31.2 | 4.250 | 100.0 |
-| 0 | `pc_greedy` | 100.0 | 67.5 | 79.7 | 82.3 | 55.0 | 65.1 | 2.250 | 75.0 |
-| 0 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 1 | `llm_raw` | 62.5 | 56.2 | 57.9 | 29.2 | 20.8 | 24.1 | 6.875 | 100.0 |
-| 1 | `llm_stats` | 71.9 | 31.2 | 42.3 | 37.5 | 8.3 | 13.4 | 6.375 | 100.0 |
-| 1 | `pc_greedy` | 96.9 | 54.2 | 68.8 | 67.7 | 39.6 | 49.7 | 3.750 | 87.5 |
-| 1 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 2 | `llm_raw` | 64.8 | 58.3 | 60.0 | 35.2 | 22.9 | 27.6 | 6.625 | 100.0 |
-| 2 | `llm_stats` | 66.7 | 22.9 | 33.4 | 35.4 | 8.3 | 12.2 | 6.375 | 100.0 |
-| 2 | `pc_greedy` | 100.0 | 31.2 | 46.7 | 62.5 | 20.8 | 30.7 | 4.750 | 93.8 |
-| 2 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 3 | `llm_raw` | 47.8 | 63.9 | 52.1 | 38.3 | 16.7 | 20.6 | 14.000 | 100.0 |
-| 3 | `llm_stats` | 68.8 | 15.3 | 24.3 | 58.3 | 11.1 | 18.3 | 8.625 | 100.0 |
-| 3 | `pc_greedy` | 100.0 | 48.6 | 65.0 | 77.3 | 36.1 | 48.9 | 5.750 | 81.2 |
-| 3 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 4 | `llm_raw` | 65.8 | 70.8 | 65.2 | 43.8 | 12.5 | 15.0 | 7.625 | 100.0 |
-| 4 | `llm_stats` | 87.5 | 27.1 | 40.5 | 58.3 | 14.6 | 21.6 | 5.375 | 100.0 |
-| 4 | `pc_greedy` | 96.9 | 50.0 | 65.4 | 69.8 | 35.4 | 46.5 | 4.000 | 100.0 |
-| 4 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 5 | `llm_raw` | 49.9 | 72.2 | 50.4 | 37.5 | 18.1 | 21.6 | 15.875 | 100.0 |
-| 5 | `llm_stats` | 85.4 | 16.7 | 27.5 | 56.2 | 9.7 | 16.4 | 8.500 | 100.0 |
-| 5 | `pc_greedy` | 97.5 | 31.9 | 46.9 | 41.7 | 9.7 | 15.2 | 8.250 | 100.0 |
-| 5 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+This is a **partial smoke/probe**, not a full v1 benchmark result.
 
-### Claude Sonnet 4.6: observational panel
+Source:
 
-All precision/recall/F1 values are percentages.
+[`traces/ladder/deepseek_v4_flash_ladder_2seed/results_long.csv`](traces/ladder/deepseek_v4_flash_ladder_2seed/results_long.csv)
 
-| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|
-| 0 | `llm_raw_obs` | 78.3 | 65.0 | 70.7 | 29.4 | 25.0 | 26.9 | 4.625 |
-| 0 | `llm_stats_obs` | 83.3 | 60.0 | 68.7 | 44.8 | 20.0 | 24.7 | 4.625 |
-| 0 | `pc` | 100.0 | 67.5 | 79.7 | 78.1 | 12.5 | 13.9 | 4.375 |
-| 1 | `llm_raw_obs` | 65.5 | 54.2 | 58.8 | 40.0 | 31.2 | 34.9 | 5.875 |
-| 1 | `llm_stats_obs` | 61.3 | 64.6 | 58.9 | 85.4 | 10.4 | 14.0 | 8.125 |
-| 1 | `pc` | 96.9 | 54.2 | 68.8 | 68.8 | 16.7 | 23.8 | 5.125 |
-| 2 | `llm_raw_obs` | 66.2 | 62.5 | 63.6 | 39.8 | 39.6 | 39.3 | 5.500 |
-| 2 | `llm_stats_obs` | 60.7 | 75.0 | 63.1 | 93.8 | 6.2 | 6.2 | 8.375 |
-| 2 | `pc` | 100.0 | 31.2 | 46.7 | 93.8 | 2.1 | 3.1 | 5.875 |
-| 3 | `llm_raw_obs` | 39.7 | 54.2 | 44.6 | 34.3 | 34.7 | 33.8 | 13.000 |
-| 3 | `llm_stats_obs` | 50.9 | 72.2 | 53.8 | 92.9 | 8.3 | 10.9 | 15.875 |
-| 3 | `pc` | 100.0 | 48.6 | 65.0 | 89.6 | 11.1 | 17.2 | 8.000 |
-| 4 | `llm_raw_obs` | 67.7 | 54.2 | 59.9 | 47.5 | 37.5 | 41.7 | 5.375 |
-| 4 | `llm_stats_obs` | 66.7 | 70.8 | 64.9 | 56.2 | 18.8 | 22.4 | 7.375 |
-| 4 | `pc` | 96.9 | 50.0 | 65.4 | 71.9 | 14.6 | 20.0 | 5.250 |
-| 5 | `llm_raw_obs` | 49.2 | 50.0 | 48.8 | 42.3 | 38.9 | 40.1 | 10.375 |
-| 5 | `llm_stats_obs` | 49.8 | 69.4 | 55.1 | 88.2 | 11.1 | 12.0 | 15.125 |
-| 5 | `pc` | 97.5 | 31.9 | 46.9 | 93.8 | 2.8 | 3.8 | 8.875 |
+Run status:
 
-### Claude Sonnet 4.6: active panel
+- Model: `openrouter/deepseek/deepseek-v4-flash`
+- Deduplicated rows: `18`
+- Successes: `16`
+- Failures: `2`
+- Both failures were OpenRouter/DeepInfra upstream `429` rate-limit errors.
+- Coverage is limited to L0 plus one L1 PC/observational slice; do not compare this as a full ladder run.
 
-All precision/recall/F1/efficiency values are percentages.
+| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| observational | `pc` | 3 | 97.0 | 100.0 | 22.2 | 26.7 | 2.667 | 100.0 |
+| observational | `llm_raw_obs` | 3 | 63.5 | 100.0 | 0.0 | 0.0 | 9.000 | 100.0 |
+| observational | `llm_stats_obs` | 2 | 61.9 | 66.7 | 16.7 | 16.7 | 9.000 | 100.0 |
+| active | `pc_greedy` | 3 | 97.0 | 100.0 | 94.4 | 97.0 | 0.333 | 66.7 |
+| active | `llm_raw` | 2 | 61.9 | 25.0 | 50.0 | 33.3 | 4.000 | 50.0 |
+| active | `llm_stats` | 1 | 66.7 | 66.7 | 66.7 | 66.7 | 2.000 | 100.0 |
+| active | `oracle` | 2 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
 
-| Level | Method | Skel P | Skel R | Skel F1 | Dir P | Dir R | Dir F1 | DAG SHD | Eff |
-|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | `llm_raw` | 73.1 | 57.5 | 63.7 | 31.9 | 27.5 | 29.4 | 4.625 | 87.5 |
-| 0 | `llm_stats` | 89.6 | 67.5 | 76.4 | 32.3 | 22.5 | 26.4 | 4.250 | 100.0 |
-| 0 | `pc_greedy` | 100.0 | 67.5 | 79.7 | 82.3 | 55.0 | 65.1 | 2.250 | 75.0 |
-| 0 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 1 | `llm_raw` | 66.3 | 54.2 | 58.6 | 34.4 | 25.0 | 28.4 | 6.250 | 100.0 |
-| 1 | `llm_stats` | 77.3 | 62.5 | 68.6 | 51.0 | 25.0 | 33.2 | 5.500 | 100.0 |
-| 1 | `pc_greedy` | 96.9 | 54.2 | 68.8 | 67.7 | 39.6 | 49.7 | 3.750 | 87.5 |
-| 1 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 2 | `llm_raw` | 60.3 | 54.2 | 56.7 | 38.8 | 35.4 | 36.9 | 5.875 | 100.0 |
-| 2 | `llm_stats` | 65.1 | 64.3 | 62.8 | 35.0 | 26.2 | 29.7 | 6.571 | 100.0 |
-| 2 | `pc_greedy` | 100.0 | 31.2 | 46.7 | 62.5 | 20.8 | 30.7 | 4.750 | 93.8 |
-| 2 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 3 | `llm_raw` | 51.0 | 52.8 | 51.4 | 30.7 | 29.2 | 29.7 | 10.875 | 100.0 |
-| 3 | `llm_stats` | 47.7 | 50.0 | 46.9 | 64.2 | 20.8 | 28.7 | 12.625 | 100.0 |
-| 3 | `pc_greedy` | 100.0 | 48.6 | 65.0 | 77.3 | 36.1 | 48.9 | 5.750 | 81.2 |
-| 3 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 4 | `llm_raw` | 72.1 | 58.3 | 63.9 | 37.1 | 31.2 | 33.6 | 5.500 | 100.0 |
-| 4 | `llm_stats` | 69.9 | 75.0 | 70.7 | 33.4 | 22.9 | 26.5 | 6.750 | 100.0 |
-| 4 | `pc_greedy` | 96.9 | 50.0 | 65.4 | 69.8 | 35.4 | 46.5 | 4.000 | 100.0 |
-| 4 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-| 5 | `llm_raw` | 49.8 | 40.3 | 43.5 | 36.9 | 29.2 | 31.9 | 10.375 | 100.0 |
-| 5 | `llm_stats` | 49.3 | 55.6 | 50.7 | 58.4 | 19.4 | 23.5 | 12.500 | 100.0 |
-| 5 | `pc_greedy` | 97.5 | 31.9 | 46.9 | 41.7 | 9.7 | 15.2 | 8.250 | 100.0 |
-| 5 | `oracle` | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
+The DeepSeek trace is useful mainly for validating the LiteLLM/OpenRouter path and full trace persistence. It is not enough evidence for model-level claims.
 
-### Weighted overall averages across levels
+## Running Experiments
 
-Observational:
+Install dependencies:
 
-- `llm_raw_obs`: `skeleton P/R/F1=64.8/74.7/65.7%`, `directed P/R/F1=74.1/19.2/22.6%`, `dag_shd=9.396`
-- `llm_stats_obs`: `skeleton P/R/F1=77.0/26.4/35.9%`, `directed P/R/F1=68.4/9.2/13.3%`, `dag_shd=6.750`
-- `pc`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=82.6/10.0/13.6%`, `dag_shd=6.250`
-
-Active:
-
-- `llm_raw`: `skeleton P/R/F1=61.4/63.6/58.8%`, `directed P/R/F1=36.3/19.3/22.9%`, `dag_shd=9.271`, `efficiency=92.7%`
-- `llm_stats`: `skeleton P/R/F1=77.2/29.7/40.0%`, `directed P/R/F1=48.0/13.3/18.8%`, `dag_shd=6.583`, `efficiency=100.0%`
-- `pc_greedy`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=66.9/32.8/42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
-- `oracle`: perfect on all metrics
-
-Sonnet 4.6 observational:
-
-- `llm_raw_obs`: `skeleton P/R/F1=61.1/56.7/57.7%`, `directed P/R/F1=38.9/34.5/36.1%`, `dag_shd=7.458`
-- `llm_stats_obs`: `skeleton P/R/F1=62.1/68.7/60.7%`, `directed P/R/F1=76.9/12.5/15.0%`, `dag_shd=9.917`
-- `pc`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=82.6/10.0/13.6%`, `dag_shd=6.250`
-
-Sonnet 4.6 active:
-
-- `llm_raw`: `skeleton P/R/F1=62.1/52.9/56.3%`, `directed P/R/F1=35.0/29.6/31.7%`, `dag_shd=7.250`, `efficiency=97.9%`
-- `llm_stats`: `skeleton P/R/F1=66.5/62.4/62.7%`, `directed P/R/F1=46.0/22.7/28.0%`, `dag_shd=8.064`, `efficiency=100.0%`, `n=47`
-- `pc_greedy`: `skeleton P/R/F1=98.5/47.2/62.1%`, `directed P/R/F1=66.9/32.8/42.7%`, `dag_shd=4.792`, `efficiency=89.6%`
-- `oracle`: perfect on all metrics
-
-### Model comparison
-
-| Panel | Method | Model/Baseline | Dir F1 | DAG SHD |
-|---|---|---|---:|---:|
-| Obs | `llm_raw_obs` | GPT-5.4 | 22.6 | 9.396 |
-| Obs | `llm_raw_obs` | Sonnet 4.6 | 36.1 | 7.458 |
-| Obs | `llm_stats_obs` | GPT-5.4 | 13.3 | 6.750 |
-| Obs | `llm_stats_obs` | Sonnet 4.6 | 15.0 | 9.917 |
-| Obs | `pc` | Baseline | 13.6 | 6.250 |
-| Active | `llm_raw` | GPT-5.4 | 22.9 | 9.271 |
-| Active | `llm_raw` | Sonnet 4.6 | 31.7 | 7.250 |
-| Active | `llm_stats` | GPT-5.4 | 18.8 | 6.583 |
-| Active | `llm_stats` | Sonnet 4.6 | 28.0 | 8.064 |
-| Active | `pc_greedy` | Baseline | 42.7 | 4.792 |
-
-### Interpretation
-
-The headline result is not that LLMs beat classical causal discovery. They do not under the most error-sensitive metric. `pc_greedy` is the strongest non-oracle active method overall: it has the best active directed F1 (`42.7%`) and the lowest active DAG SHD (`4.792`), meaning it makes fewer total graph mistakes.
-
-Sonnet 4.6 is the stronger LLM on directed recovery. It improves directed F1 over GPT-5.4 in every LLM setting, especially raw observational (`36.1%` vs `22.6%`) and raw active (`31.7%` vs `22.9%`). This means the weak GPT-5.4 result is partly a model-level limitation, not only a benchmark artifact.
-
-The deeper bottleneck still appears general across LLMs. Even Sonnet 4.6 remains below `pc_greedy` on active directed F1 (`31.7%`/`28.0%` vs `42.7%`) and SHD (`7.250`/`8.064` vs `4.792`). The LLMs recover some causal structure, but they do not consistently turn observational and interventional evidence into low-error DAGs.
-
-The stats-tool agents do not dominate raw agents. GPT-5.4 stats reduces SHD relative to raw but loses directed recall; Sonnet stats improves skeleton recovery but has worse SHD than Sonnet raw. This suggests that tool access alone is not enough: current LLMs still struggle with deciding which statistical evidence matters and when to submit a clean graph.
-
-The main research takeaway is precision/recall asymmetry. LLM agents can propose plausible causal structure, but they either overcommit edges or underuse statistical evidence. The benchmark should report precision, recall, F1, and SHD together; F1 alone can make aggressive guessing look better than it is.
-
-### Cost (gpt-5.4, this run)
-
-- Prompt tokens: `1,397,089`
-- Completion tokens: `94,871`
-- Total tokens: `1,491,960`
-- Estimated cost: `~$4.92` (input `$2.50/M`, output `$15.00/M`)
-
-### Cost (Sonnet 4.6, this run)
-
-- Estimated completed run cost: `~$10-$13`
-- Partial-run verified cost before resume: `$0.6255` for `11` completed LLM rows
-- Anthropic prompt caching was not effective in this run (`cache_read_input_tokens=0` during the checked partial run)
-
-## How to Run
-
-Setup:
-
-```bash
+```powershell
 uv sync
 ```
 
-Unit tests:
+Run a small v1 smoke:
 
-```bash
-uv run pytest tests/unit/causal_discovery -q
+```powershell
+uv run python run_ladder.py --levels 0 --seeds-per-level 1 --models openrouter/deepseek/deepseek-v4-flash --out-dir traces\ladder\deepseek_v4_flash_smoke
 ```
 
-PC baselines:
+Run a fuller v1 ladder:
 
-```bash
-uv run python run_pc_baseline.py
-uv run python run_pc_interventional_baseline.py
+```powershell
+uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder
 ```
 
-Full ladder:
+Resume or retry failures:
 
-```bash
-uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_toolcall_run1"
+```powershell
+uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder --resume
+uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder --retry-failed
 ```
 
-Resume + retry failed:
+API keys are read from `.env` by default. OpenRouter models require `OPENROUTER_API_KEY`.
 
-```bash
-uv run python run_ladder.py --models gpt-5.4 --env-file "C:\projects\Random Research\Internet of Agents Benchmark\.env" --out-dir "traces/ladder/full_ladder_toolcall_run1" --resume --retry-failed
-```
+## Trace Guarantees
 
-## Repository Structure
+Current LLM traces include:
+
+- `instance_metadata`: true DAG, CPDAG, optimal intervention set, ladder config, seed metadata.
+- `llm_model_call`: request, raw provider response, parsed action, token usage, cost/latency/status.
+- `llm_action`: parsed benchmark action.
+- `llm_tool_result`: statistical tool outputs.
+- `llm_intervention_result`: intervention rows and remaining budget.
+- `work_success` / `work_failed`: terminal status and scores/errors.
+
+This is designed so final scores can be audited against the exact tool calls and model outputs.
+
+## Repository Map
 
 ```text
-RL-environment/
-  src/causal_discovery/
-    agents/        LLM policies + action parsing + stats tools
-    baselines/     PC parser/shared baseline utilities
-    benchmark/     instance assembly
-    config/        v1 benchmark config
-    core/          DAG, SCM, permutation primitives
-    equivalence/   CPDAG + Meek + minimum intervention set
-    graph_gen/     random DAG generation
-    runtime/       benchmark environment/session API
-    sampling/      observational/interventional samplers
-    scoring/       submission schema + score functions
-    scm/           SEM parameterization + covariance diagnostics
-  docs/specs/
-    causal-discovery-v1-pseudocode.md
-    causal-discovery-v1-modules.md
-    scoring.md
-  run_ladder.py
-  run_pc_baseline.py
-  run_pc_interventional_baseline.py
+src/causal_discovery/
+  agents/          LLM policies, LiteLLM adapter, action schemas, tools
+  benchmark/       benchmark construction
+  equivalence/     CPDAG / MEC theory helpers
+  scoring/         GraphSubmission scoring
+  scm/             linear-Gaussian SCM generation and diagnostics
+
+run_ladder.py              main ladder runner
+run_corr_obs_probe.py      correlation-summary LLM ablation probe
+run_random_dag_baseline.py random DAG baseline
+scripts/                   analysis and figure-generation helpers
+docs/specs/                design and scoring specs
+research/                  paper draft and paper figures
+reports/figure_prototypes/ narrative figure prototypes
+traces/                    experiment outputs
 ```
 
-## Known Gaps / Next Fixes
+## Notes For Future V1 Work
 
-- Deduplicate retry attempts inside `results_summary.csv` so resumed runs cannot double-count old attempts.
-- Add explicit cost/token budget guardrails to `run_ladder.py`.
+- Re-run random baseline on the final v1 seed map.
+- Re-run PC and PC+greedy on the same v1 seeds.
+- Freeze prompts before running full LLM ladders.
+- Report random-floor-adjusted interpretation beside directed F1.
+- Treat raw, stats, and summary interfaces as evidence-interface ablations, not as a search for a single winning interface.

@@ -30,9 +30,8 @@ wheels/
 
 # Non-code directories (docs, reports, research kept locally, not in git)
 archive/
-docs/
-reports/
-research/
+
+
 tmp/
 replay/
 tests/

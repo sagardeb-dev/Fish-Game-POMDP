@@ -1,0 +1,8 @@
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Classical causal discovery.} ACDB builds on the PC algorithm \citep{spirtes2000causation}, Markov-equivalence theory \citep{verma1990equivalence,andersson1997characterization}, score-based GES \citep{chickering2002ges}, and intervention-design work on orienting equivalence classes \citep{eberhardt2005interventions,hauser2012gies}. These methods define the CPDAG ceiling and the classical baselines against which LLM agents should be evaluated.
+
+\paragraph{LLMs for causality.} Prior LLM work ranges from optimistic pairwise causal-direction results \citep{kiciman2023llmcausal} to critiques that such behavior is pattern matching rather than causal reasoning \citep{zecevic2023causalparrots}. CLadder evaluates language-model causal QA across Pearl's ladder \citep{jin2023cladder}, while \citet{long2023llmgraphs} test text-only graph reconstruction. ACDB differs by requiring the model to interact with data and interventions before committing to a scored graph.
+
+\paragraph{Agent benchmarks.} SWE-bench, AgentBench, WebArena, OSWorld, and GAIA move evaluation toward interactive agents \citep{jimenez2024swebench,liu2024agentbench,zhou2024webarena,xie2024osworld,mialon2023gaia}. ACDB shares the paired-seed, deterministic-scoring ethos but narrows the task to scientific reasoning under a formal SCM, where the hidden state and failure modes are inspectable by construction.

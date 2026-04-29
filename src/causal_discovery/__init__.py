@@ -7,6 +7,7 @@ from causal_discovery.agents import (
     IndependenceTestAction,
     InterveneAction,
     LLMDecisionModel,
+    LiteLLMJSONPolicyModel,
     LLMRawAgent,
     LLMStatsAgent,
     MockAgent,
@@ -14,6 +15,7 @@ from causal_discovery.agents import (
     SessionAgent,
     SubmitGraphAction,
     ToolResult,
+    provider_for_model,
     run_agent_session,
 )
 from causal_discovery.baselines import parse_causallearn_endpoint_matrix
@@ -72,6 +74,7 @@ __all__ = [
     "IndependenceTestAction",
     "InterveneAction",
     "LLMDecisionModel",
+    "LiteLLMJSONPolicyModel",
     "LLMRawAgent",
     "LLMStatsAgent",
     "LinearGaussianSCM",
@@ -96,6 +99,7 @@ __all__ = [
     "parameterize_linear_gaussian_scm",
     "partial_correlation",
     "parse_causallearn_endpoint_matrix",
+    "provider_for_model",
     "relevant_structural_partial_correlations",
     "reject_graph",
     "reject_intervention_profile",

@@ -63,7 +63,7 @@ class _BaseLLMAgent:
     def on_observation(self, data: np.ndarray, budget: int) -> None:
         self._observational_data = np.array(data, copy=True)
         self._session_prompt = build_session_prompt(
-            self.variable_names, self._observational_data, budget
+            self.variable_names, self._observational_data, budget, self.allowed_actions
         )
 
     def next_action(self, remaining_budget: int) -> AgentAction:
@@ -109,19 +109,13 @@ class LLMRawAgent(_BaseLLMAgent):
         self,
         model: LLMDecisionModel,
         variable_names: tuple[str, ...],
-        allow_interventions: bool = True,
+        allowed_actions: frozenset[str],
     ):
         super().__init__(
             model=model,
             variable_names=variable_names,
-            allowed_actions=(
-                frozenset({"intervene", "submit_graph"})
-                if allow_interventions
-                else frozenset({"submit_graph"})
-            ),
-            _system_prompt=build_system_prompt_raw(
-                allow_interventions=allow_interventions
-            ),
+            allowed_actions=allowed_actions,
+            _system_prompt=build_system_prompt_raw(allowed_actions),
         )
 
 
@@ -130,32 +124,13 @@ class LLMStatsAgent(_BaseLLMAgent):
         self,
         model: LLMDecisionModel,
         variable_names: tuple[str, ...],
-        allow_interventions: bool = True,
+        allowed_actions: frozenset[str],
     ):
         super().__init__(
             model=model,
             variable_names=variable_names,
-            allowed_actions=frozenset(
-                (
-                    {
-                        "correlation",
-                        "partial_correlation",
-                        "independence_test",
-                        "intervene",
-                        "submit_graph",
-                    }
-                    if allow_interventions
-                    else {
-                        "correlation",
-                        "partial_correlation",
-                        "independence_test",
-                        "submit_graph",
-                    }
-                )
-            ),
-            _system_prompt=build_system_prompt_stats(
-                allow_interventions=allow_interventions
-            ),
+            allowed_actions=allowed_actions,
+            _system_prompt=build_system_prompt_stats(allowed_actions),
         )
 
 

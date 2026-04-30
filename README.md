@@ -4,7 +4,7 @@ ACDB is a scientific instrument for evaluating **agentic causal reasoning**. The
 
 The key asymmetry is intentional: the evaluator can construct the true DAG, CPDAG/MEC, SCM metadata, and minimum identifying intervention set; the agent only sees observations, optional tools, optional interventions, and a budget.
 
-![Evaluator state vs agent-visible state](reports/figure_prototypes/20260429T052111Z/01_hidden_agent_asymmetry.png)
+![Evaluator state vs agent-visible state](reports/figure_prototypes/20260429T063348Z/01_hidden_agent_asymmetry.png)
 
 ## Current Status
 
@@ -26,7 +26,7 @@ Agent actions:
 
 All agents submit the same `GraphSubmission` object. This shared contract is used by LLM policies, PC baselines, random baselines, and oracle.
 
-![DAG, CPDAG, and intervention example](reports/figure_prototypes/20260429T052111Z/03_dag_cpdag_intervention.png)
+![DAG, CPDAG, and intervention example](reports/figure_prototypes/20260429T063348Z/03_dag_cpdag_intervention.png)
 
 ## Scoring Layers
 
@@ -37,7 +37,7 @@ Every metric has a theoretical referent:
 - `directed_f1` and `dag_shd`: full DAG recovery.
 - `efficiency`: intervention use relative to the minimum identifying intervention set.
 
-![Layered scoring contract](reports/figure_prototypes/20260429T052111Z/02_layered_scoring_contract.png)
+![Layered scoring contract](reports/figure_prototypes/20260429T063348Z/02_layered_scoring_contract.png)
 
 Full scoring details: [`docs/specs/scoring.md`](docs/specs/scoring.md)
 
@@ -87,7 +87,11 @@ E[F1] = (1/(M+1)) * sum_{m=0}^{M} k*m / [M*(m+k)]
 
 This is why v1 reports a random floor beside directed F1 instead of treating random as a normal competitor.
 
-![Random floor density calibration](reports/figure_prototypes/20260429T052111Z/05_random_floor_density.png)
+![Random floor density calibration](reports/figure_prototypes/20260429T063348Z/05_random_floor_density.png)
+
+The v1 ladder shifts levels away from the high-density v0 region and toward lower random-floor regimes:
+
+![V0 and V1 ladder regions](reports/figure_prototypes/20260429T063348Z/08_v0_v1_ladder_regions.png)
 
 ## Supported Policies
 
@@ -110,21 +114,21 @@ The LLM layer uses LiteLLM through `LiteLLMJSONPolicyModel`, with provider routi
 
 The current figure prototypes are committed under:
 
-[`reports/figure_prototypes/20260429T052111Z`](reports/figure_prototypes/20260429T052111Z)
+[`reports/figure_prototypes/20260429T063348Z`](reports/figure_prototypes/20260429T063348Z)
 
 They are narrative artifacts, not final paper figures. They intentionally mix conceptual diagrams, archived v0 aggregate plots, and the partial v1 DeepSeek graph-output trace where edge lists are available.
 
 Representative graph-output visualization:
 
-![Representative graph output comparison](reports/figure_prototypes/20260429T052111Z/04_representative_graph_output.png)
+![Representative graph output comparison](reports/figure_prototypes/20260429T063348Z/04_representative_graph_output.png)
 
 Aggregate v0 failure-mode visualization:
 
-![Precision recall and SHD](reports/figure_prototypes/20260429T052111Z/06_precision_recall_shd.png)
+![Precision recall and SHD](reports/figure_prototypes/20260429T063348Z/06_precision_recall_shd.png)
 
 Paired active-gain visualization:
 
-![Paired active gain](reports/figure_prototypes/20260429T052111Z/07_active_gain.png)
+![Paired active gain](reports/figure_prototypes/20260429T063348Z/07_active_gain.png)
 
 Interpretation caveat: active gain shows whether the active interface improves final directed-DAG recovery on paired instances. It does not by itself prove correct experimental reasoning; intervention choice and intervention interpretation require trace-level diagnostics.
 

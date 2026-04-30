@@ -67,11 +67,14 @@ The current ladder is a graph-scale/generalization ladder. After L0, sample size
 | Level | d | k | density rho | n_obs | n_int | noise_var | slack | exact random Dir-F1 floor |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | 0 | 4 | 3 | 0.500 | 50 | 25 | 0.5 | 2 | 0.215 |
-| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 1 | 0.196 |
-| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 1 | 0.173 |
-| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 1 | 0.155 |
-| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 0 | 0.133 |
-| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 0 | 0.117 |
+| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 2 | 0.196 |
+| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 2 | 0.173 |
+| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 2 | 0.155 |
+| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 2 | 0.133 |
+| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 2 | 0.117 |
+
+Every v1 level now uses `budget_slack=2`, so the active agent gets two attempts beyond the
+minimum identifying intervention set size.
 
 Random floor note: for maximum possible directed edges `M=d(d-1)/2`, true edge count `k`, and random submitted edge count `m`, the conditional directed-F1 floor is
 

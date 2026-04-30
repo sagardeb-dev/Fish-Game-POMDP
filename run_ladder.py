@@ -7,6 +7,7 @@ import csv
 import json
 import math
 import os
+import warnings
 import sys
 import time
 from dataclasses import dataclass
@@ -117,11 +118,11 @@ def ladder_levels_v0() -> dict[int, LevelSpec]:
 def ladder_levels_v1() -> dict[int, LevelSpec]:
     return {
         0: LevelSpec(0, d=4, k=3, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
-        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
-        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
     }
 
 
@@ -222,7 +223,8 @@ def make_work_items(levels: list[int], seed_map: dict[int, list[int]], models: l
             for model in models:
                 items.append(WorkItem("active", "llm_raw", level_id, seed, model))
                 items.append(WorkItem("active", "llm_stats", level_id, seed, model))
-            items.append(WorkItem("active", "oracle", level_id, seed, "baseline"))
+            # Deprecated: oracle reads the true DAG directly, not a meaningful baseline.
+            # items.append(WorkItem("active", "oracle", level_id, seed, "baseline"))
     return items
 
 
@@ -445,6 +447,12 @@ def run_pc_greedy_active(instance, runtime_seed: int, alpha: float):
 
 
 def run_oracle(instance, runtime_seed: int):
+    """Deprecated: submits the true DAG directly — not a meaningful baseline."""
+    warnings.warn(
+        "run_oracle is deprecated; use pc_greedy as the algorithmic ceiling",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
     _ = env.observe()
     submission = GraphSubmission.from_dag(instance.true_dag)
@@ -485,13 +493,13 @@ def run_llm(
         agent = LLMStatsAgent(
             model=model,
             variable_names=names,
-            allow_interventions=allow_interventions,
+            allowed_actions=allowed_actions,
         )
     else:
         agent = LLMRawAgent(
             model=model,
             variable_names=names,
-            allow_interventions=allow_interventions,
+            allowed_actions=allowed_actions,
         )
 
     if agent.allowed_actions != allowed_actions:

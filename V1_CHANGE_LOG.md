@@ -32,15 +32,26 @@ Minimal notes for implementation changes that affect paper claims, results, or m
   factorial identifiability x statistics design.
 - Sample sizes and noise are fixed after L0 so graph scale is not confounded with decreasing
   `n_obs`/`n_int`. Statistical scarcity should be a separate ablation.
+- 2026-04-30 update: all v1 levels now use `budget_slack=2`.
 
 | L | d | k | rho | n_obs | n_int | noise | slack | E_random Dir-F1 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 0 | 4 | 3 | 0.500 | 50 | 25 | 0.5 | 2 | 0.215 |
-| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 1 | 0.196 |
-| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 1 | 0.173 |
-| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 1 | 0.155 |
-| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 0 | 0.133 |
-| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 0 | 0.117 |
+| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 2 | 0.196 |
+| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 2 | 0.173 |
+| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 2 | 0.155 |
+| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 2 | 0.133 |
+| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 2 | 0.117 |
+
+## 2026-04-30 -- Uniform budget slack
+
+- Set `budget_slack=2` for L1-L5 in `ladder_levels_v1()`; L0 already used slack 2.
+- Budget formula is unchanged: `budget = len(optimal_intervention_set) + budget_slack`.
+- `optimal_intervention_set` remains the brute-force minimum set computed by
+  `compute_minimum_intervention_set()`, accounting for Meek propagation.
+- Motivation: zero slack at L4-L5 made one poor intervention target unrecoverable and mixed
+  causal reasoning quality with exact minimum-set selection.
+- Paper/result impact: all v1 active results must be rerun; random floor is unchanged.
 
 ## Validation probes
 

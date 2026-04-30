@@ -6,6 +6,8 @@ import json
 
 import numpy as np
 
+from causal_discovery.agents.tool_schema import ACTION_NAMES, action_fields_for_allowed_actions
+
 
 INTERVENTION_RULE_TEXT = (
     "An intervention forces one variable to a fixed value, breaking its normal "
@@ -14,25 +16,45 @@ INTERVENTION_RULE_TEXT = (
     "determine causal direction."
 )
 
+ACTION_SIGNATURES = {
+    "intervene": "intervene(var, value)",
+    "correlation": "correlation(i, j)",
+    "partial_correlation": "partial_correlation(i, j, conditioning_on)",
+    "independence_test": "independence_test(i, j, conditioning_on, alpha)",
+    "submit_graph": "submit_graph(directed_edges, undirected_edges, reasoning_summary)",
+}
 
-def build_system_prompt_raw(allow_interventions: bool = True) -> str:
+OUTPUT_FIELD_DESCRIPTIONS = {
+    "action": "",
+    "var": "int|null; required for intervene",
+    "value": "float|null; required for intervene",
+    "i": "int|null; required for statistical tools",
+    "j": "int|null; required for statistical tools",
+    "conditioning_on": "list[int]",
+    "alpha": "float|null; required for independence_test",
+    "directed_edges": "list[list[int, int]]",
+    "undirected_edges": "list[list[int, int]]",
+    "reasoning_summary": "string",
+}
+
+
+def format_allowed_actions(allowed_actions: frozenset[str]) -> str:
+    ordered = [action for action in ACTION_NAMES if action in allowed_actions]
+    lines = ["Allowed actions:"]
+    lines.extend(f"- {ACTION_SIGNATURES[action]}" for action in ordered)
+    return "\n".join(lines) + "\n"
+
+
+def build_system_prompt_raw(allowed_actions: frozenset[str]) -> str:
     base = (
         "You are performing active causal discovery over an unknown linear-Gaussian "
         "DAG with full observability and no hidden confounders.\n"
         f"{INTERVENTION_RULE_TEXT}\n"
     )
-    if allow_interventions:
-        actions = (
-            "Allowed actions:\n"
-            "- intervene(var, value)\n"
-            "- submit_graph(directed_edges, undirected_edges, reasoning_summary)\n"
-        )
-    else:
-        actions = (
-            "No experiments/interventions are available for this run.\n"
-            "Allowed actions:\n"
-            "- submit_graph(directed_edges, undirected_edges, reasoning_summary)\n"
-        )
+    actions = ""
+    if "intervene" not in allowed_actions:
+        actions += "No experiments/interventions are available for this run.\n"
+    actions += format_allowed_actions(allowed_actions)
     return (
         base
         + actions
@@ -41,7 +63,7 @@ def build_system_prompt_raw(allow_interventions: bool = True) -> str:
     )
 
 
-def build_system_prompt_stats(allow_interventions: bool = True) -> str:
+def build_system_prompt_stats(allowed_actions: frozenset[str]) -> str:
     base = (
         "You are performing active causal discovery over an unknown linear-Gaussian "
         "DAG with full observability and no hidden confounders.\n"
@@ -60,24 +82,10 @@ def build_system_prompt_stats(allow_interventions: bool = True) -> str:
         "- Orient edges when evidence supports direction; leave undirected only when evidence is ambiguous.\n"
         "- Avoid submitting all-undirected graphs unless evidence truly supports ambiguity.\n"
     )
-    if allow_interventions:
-        actions = (
-            "Allowed actions:\n"
-            "- correlation(i, j)\n"
-            "- partial_correlation(i, j, conditioning_on)\n"
-            "- independence_test(i, j, conditioning_on, alpha)\n"
-            "- intervene(var, value)\n"
-            "- submit_graph(directed_edges, undirected_edges, reasoning_summary)\n"
-        )
-    else:
-        actions = (
-            "No experiments/interventions are available for this run.\n"
-            "Allowed actions:\n"
-            "- correlation(i, j)\n"
-            "- partial_correlation(i, j, conditioning_on)\n"
-            "- independence_test(i, j, conditioning_on, alpha)\n"
-            "- submit_graph(directed_edges, undirected_edges, reasoning_summary)\n"
-        )
+    actions = ""
+    if "intervene" not in allowed_actions:
+        actions += "No experiments/interventions are available for this run.\n"
+    actions += format_allowed_actions(allowed_actions)
     return (
         base
         + actions
@@ -87,24 +95,22 @@ def build_system_prompt_stats(allow_interventions: bool = True) -> str:
 
 
 def build_session_prompt(
-    variable_names: tuple[str, ...], observational_data: np.ndarray, budget: int
+    variable_names: tuple[str, ...],
+    observational_data: np.ndarray,
+    budget: int,
+    allowed_actions: frozenset[str],
 ) -> str:
+    ordered_actions = [action for action in ACTION_NAMES if action in allowed_actions]
+    output_schema = {
+        field: OUTPUT_FIELD_DESCRIPTIONS[field]
+        for field in action_fields_for_allowed_actions(allowed_actions)
+    }
+    output_schema["action"] = "|".join(ordered_actions)
     payload = {
         "variables": list(variable_names),
         "budget": int(budget),
         "observational_data": observational_data.tolist(),
-        "output_schema": {
-            "action": "intervene|correlation|partial_correlation|independence_test|submit_graph",
-            "var": "int|null; required for intervene, otherwise null",
-            "value": "float|null; required for intervene, otherwise null",
-            "i": "int|null; required for statistical tools, otherwise null",
-            "j": "int|null; required for statistical tools, otherwise null",
-            "conditioning_on": "list[int]",
-            "alpha": "float|null; required for independence_test, otherwise null",
-            "directed_edges": "list[list[int, int]]",
-            "undirected_edges": "list[list[int, int]]",
-            "reasoning_summary": "string",
-        },
-        "json_contract": "Return all output_schema fields on every action. Use null for unused scalar fields and [] for unused list fields.",
+        "output_schema": output_schema,
+        "json_contract": "Return all output_schema fields on every action.",
     }
     return json.dumps(payload, separators=(",", ":"), ensure_ascii=True)

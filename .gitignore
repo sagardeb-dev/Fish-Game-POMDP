@@ -41,3 +41,5 @@ scripts/
 uv.lock
 .python-version
 *.txt
+
+LLM_ACTION_POLICY_TEST_VIEW.md

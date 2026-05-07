@@ -1,0 +1,8 @@
+panel,level,method,model,n_total,n_success,n_failed,skeleton_f1_mean,skeleton_f1_std,skeleton_f1_ci95_low,skeleton_f1_ci95_high,directed_f1_mean,directed_f1_std,directed_f1_ci95_low,directed_f1_ci95_high,dag_shd_mean,dag_shd_std,dag_shd_ci95_low,dag_shd_ci95_high,efficiency_mean,efficiency_std,efficiency_ci95_low,efficiency_ci95_high,submit_directed_mean,submit_undirected_mean,interventions_used_mean,total_actions_mean,stats_actions_mean,intervene_actions_mean,submit_actions_mean,sanitized_overlap_count_mean,cost_usd_mean
+active,3,llm_raw,openrouter/deepseek/deepseek-v4-flash,1,1,0,0.1904761904761905,0.0,0.1904761904761905,0.1904761904761905,0.09523809523809525,0.0,0.09523809523809525,0.09523809523809525,18.0,0.0,18.0,18.0,1.0,0.0,1.0,1.0,9.0,0.0,2.0,3.0,0.0,2.0,1.0,0.0,0.0033475399999999995
+active,3,llm_stats,openrouter/deepseek/deepseek-v4-flash,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,3,llm_stats_cpdag_greedy,openrouter/deepseek/deepseek-v4-flash,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,3,oracle,baseline,1,1,0,1.0,0.0,1.0,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,12.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+active,3,pc_cpdag_llm,openrouter/deepseek/deepseek-v4-flash,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,3,pc_greedy,baseline,1,1,0,0.631578947368421,0.0,0.631578947368421,0.631578947368421,0.631578947368421,0.0,0.631578947368421,0.631578947368421,7.0,0.0,7.0,7.0,0.5,0.0,0.5,0.5,7.0,0.0,4.0,0.0,0.0,0.0,0.0,0.0,0.0
+observational,3,pc,baseline,1,1,0,0.631578947368421,0.0,0.631578947368421,0.631578947368421,0.14285714285714285,0.0,0.14285714285714285,0.14285714285714285,12.0,0.0,12.0,12.0,1.0,0.0,1.0,1.0,2.0,5.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

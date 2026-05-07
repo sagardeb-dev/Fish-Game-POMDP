@@ -1,0 +1,23 @@
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+
+# Generated PDFs (keep neurips_2026.pdf reference and final build on demand)
+main.pdf
+test_compile.pdf
+
+# Editor scratch
+*.swp
+*~

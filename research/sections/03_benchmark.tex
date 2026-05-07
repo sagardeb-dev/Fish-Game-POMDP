@@ -1,0 +1,60 @@
+\section{Scoring and Calibration}
+\label{sec:scoring}
+
+Section~\ref{sec:benchmark} defined the accepted instance family and the public observe-intervene-submit runtime. This section defines how submissions over those instances are read. In ACDB, the same submitted graph is evaluated against two retained truth objects, the instance CPDAG and the hidden DAG, and the reported ladder is calibrated so directed-edge scores are not interpreted in isolation (Figure~\ref{fig:protocol-scoring}).
+
+\input{figures/fig_scoring_diagram}
+
+\subsection{Layered scoring contract}
+
+Each accepted instance retains two different truth objects. The first is the instance CPDAG, which represents the strongest structure justified by observation alone. The second is the hidden DAG, which remains the final target once interventions have been used. ACDB therefore separates observationally justified structure from final directed recovery instead of collapsing every graph error into a single score.
+
+Against the true CPDAG, ACDB computes skeleton F1 on the CPDAG skeleton and compelled-edge F1 on the directed part of the CPDAG. These scores ask whether the submission recovered the observationally identifiable structure of the instance. A reversed compelled edge is counted as both a false positive on the submitted direction and a false negative on the true one, so adjacency preservation alone does not hide an observational orientation error.
+
+Against the true DAG, ACDB computes directed-edge precision, recall, and F1 on submitted directed edges, together with structural Hamming distance (SHD). SHD assigns one error to each extra, missing, reversed, or unresolved true edge, where unresolved means that the true edge is directed but the submission leaves the same pair undirected. This distinction matters in ACDB because an undirected submitted edge is an explicit claim that the adjacency is present but the final orientation was not resolved.
+
+The DAG layer is intentionally not Markov-equivalence-aware. Observational ambiguity is already represented by the CPDAG-facing scores, so giving additional partial credit at the DAG layer would blur the distinction between what the agent could justify from observation and what it ultimately resolved through active interaction.
+
+\FloatBarrier
+
+\subsection{Difficulty ladder}
+
+The main paper reports results on five benchmark levels, L1-L5. These levels define the reported benchmark family. Every policy and model is run on the same paired accepted-seed manifest, so cross-method comparisons are instance matched rather than averaged over different sampled worlds.
+
+\begin{table}[t]
+\centering
+\caption{Reported ACDB ladder levels. Each level fixes graph size $d$, true edge count $k$, density $\rho$, observational and interventional sample counts, noise variance, and intervention slack above the benchmark-owned minimum resolving set. The total public budget remains instance specific because it is defined relative to $|\mathcal{I}^\star|$.}
+\label{tab:ladder}
+\begin{tabular}{cccccccc}
+\toprule
+Level & $d$ & $k$ & $\rho$ & $n_{\mathrm{obs}}$ & $n_{\mathrm{int}}$ & $\sigma^2$ & slack \\
+\midrule
+L1 & 6  & 6  & 0.400 & 50 & 25 & 1.0 & 2 \\
+L2 & 8  & 9  & 0.321 & 50 & 25 & 1.0 & 2 \\
+L3 & 10 & 12 & 0.267 & 50 & 25 & 1.0 & 2 \\
+L4 & 12 & 14 & 0.212 & 50 & 25 & 1.0 & 2 \\
+L5 & 14 & 16 & 0.176 & 50 & 25 & 1.0 & 2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Across these levels, the public interface is fixed while the accepted instance family changes along the main structural axes of the task: graph size, edge count, graph density, sample support, and intervention slack. The ladder therefore determines which causal worlds are compared under the same runtime. Because the accepted-seed manifest is shared across methods, later differences can be attributed to the compared policies and models rather than to different sampled instances.
+
+\subsection{Random-floor calibration}
+\label{sec:density}
+
+Directed-edge scores are only meaningful when read against a benchmark-owned floor. In ACDB, that floor is a structure-blind random submission rule that may use the public variable count $d$ but not the hidden edge count $k$, the observational sample, or any intervention outcomes. Even under that restriction, dense DAG families can produce non-trivial directed F1 simply because many sampled directions land on true adjacencies. We refer to this benchmark-design hazard as density leakage.
+
+Let
+\begin{equation}
+\rho = \frac{k}{\binom{d}{2}}.
+\label{eq:density}
+\end{equation}
+Probe measurements across graph densities yield the heuristic fit
+\begin{equation}
+\mathbb{E}[\mathrm{DirF1}_{\mathrm{random}}] \;\approx\; \frac{\rho}{1 + 2\rho}.
+\label{eq:density-leakage}
+\end{equation}
+Equation~\eqref{eq:density-leakage} is a probe-based approximation rather than a derived bound. Its role is practical: it identifies density regimes in which a blind submission rule can achieve misleadingly strong raw directed F1.
+
+The reported L1-L5 ladder is calibrated with this effect in mind. All included levels stay below the tutorial-style density regime, and the resulting structure-blind floor remains materially lower than the high-density case. Directed-F1 differences should therefore be read relative to this floor rather than as absolute values detached from graph density. Appendix~\ref{app:floor} derives the closed-form floor (Figure~\ref{fig:random-floor}) and lists per-level values used in the §\ref{sec:results} tables.

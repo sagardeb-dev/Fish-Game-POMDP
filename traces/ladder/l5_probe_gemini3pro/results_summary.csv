@@ -1,0 +1,8 @@
+panel,level,method,model,n_total,n_success,n_failed,skeleton_f1_mean,skeleton_f1_std,skeleton_f1_ci95_low,skeleton_f1_ci95_high,directed_f1_mean,directed_f1_std,directed_f1_ci95_low,directed_f1_ci95_high,dag_shd_mean,dag_shd_std,dag_shd_ci95_low,dag_shd_ci95_high,efficiency_mean,efficiency_std,efficiency_ci95_low,efficiency_ci95_high,submit_directed_mean,submit_undirected_mean,interventions_used_mean,total_actions_mean,stats_actions_mean,intervene_actions_mean,submit_actions_mean,sanitized_overlap_count_mean,cost_usd_mean
+active,5,llm_raw,openrouter/google/gemini-3-pro-preview,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,5,llm_stats,openrouter/google/gemini-3-pro-preview,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,5,llm_stats_cpdag_greedy,openrouter/google/gemini-3-pro-preview,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,5,oracle,baseline,1,1,0,1.0,0.0,1.0,1.0,1.0,0.0,1.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,1.0,1.0,16.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+active,5,pc_cpdag_llm,openrouter/google/gemini-3-pro-preview,1,0,1,,,,,,,,,,,,,,,,,,,,,,,,,
+active,5,pc_greedy,baseline,1,1,0,0.7407407407407406,0.0,0.7407407407407406,0.7407407407407406,0.7407407407407406,0.0,0.7407407407407406,0.7407407407407406,7.0,0.0,7.0,7.0,0.6666666666666666,0.0,0.6666666666666666,0.6666666666666666,11.0,0.0,6.0,0.0,0.0,0.0,0.0,0.0,0.0
+observational,5,pc,baseline,1,1,0,0.7407407407407406,0.0,0.7407407407407406,0.7407407407407406,0.2222222222222222,0.0,0.2222222222222222,0.2222222222222222,15.0,0.0,15.0,15.0,1.0,0.0,1.0,1.0,2.0,9.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

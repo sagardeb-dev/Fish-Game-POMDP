@@ -1,0 +1,15 @@
+{
+  "run_id": "20260503T164500Z",
+  "updated_at_utc": "2026-05-03T16:50:21.967000+00:00",
+  "completed": {
+    "panel=observational|method=pc|level=3|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1276453582|model=openrouter/deepseek/deepseek-v4-flash": {
+      "status": "success"
+    }
+  }
+}

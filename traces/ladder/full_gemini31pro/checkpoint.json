@@ -1,0 +1,609 @@
+{
+  "run_id": "20260504T193007Z",
+  "updated_at_utc": "2026-05-05T14:37:18.147722+00:00",
+  "completed": {
+    "panel=observational|method=pc|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1276453582|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1276453582|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1276453582|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1276453582|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=27998312|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=27998312|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=27998312|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=27998312|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=931551983|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=931551983|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=931551983|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=931551983|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=974369856|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=974369856|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=974369856|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=974369856|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1539978433|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1539978433|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1539978433|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1539978433|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=868078822|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=868078822|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=868078822|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=868078822|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=452641024|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=452641024|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=452641024|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=452641024|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=963592850|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=963592850|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=963592850|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=963592850|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1257633785|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1257633785|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1257633785|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1257633785|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1100146725|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1100146725|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1100146725|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1100146725|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1910407594|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1910407594|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1910407594|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1910407594|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=746528573|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=746528573|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=746528573|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=746528573|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1175759265|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1175759265|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1175759265|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1175759265|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1982942393|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1982942393|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1982942393|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1982942393|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1449442515|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1449442515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1449442515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1449442515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1479720101|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1479720101|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1479720101|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1479720101|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=823847298|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=823847298|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=823847298|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=823847298|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=834246677|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=834246677|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=834246677|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=834246677|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=32015887|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=32015887|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=32015887|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=32015887|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=716908331|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=716908331|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=716908331|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=716908331|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1426457537|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1426457537|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1426457537|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1426457537|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=684342303|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=684342303|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=684342303|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=684342303|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1207468583|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1207468583|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1207468583|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1207468583|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1612783012|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1612783012|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1612783012|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1612783012|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1329552115|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=1329552115|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=1329552115|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=1329552115|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=160719912|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=3|seed=160719912|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=160719912|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=160719912|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=362855691|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=3|seed=362855691|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=362855691|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=362855691|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=589330817|model=google/gemini-3.1-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=3|seed=589330817|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=589330817|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=589330817|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=1877150515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1877150515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1877150515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=1877150515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=1877150515|model=google/gemini-3.1-pro-preview": {
+      "status": "success"
+    }
+  }
+}

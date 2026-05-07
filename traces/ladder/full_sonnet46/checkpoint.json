@@ -1,0 +1,399 @@
+{
+  "run_id": "20260503T184306Z",
+  "updated_at_utc": "2026-05-03T18:44:35.748207+00:00",
+  "completed": {
+    "panel=observational|method=pc|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1276453582|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1276453582|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1276453582|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1276453582|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=27998312|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=27998312|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=27998312|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=27998312|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=931551983|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=931551983|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=931551983|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=931551983|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=974369856|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=974369856|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=974369856|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=974369856|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1539978433|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1539978433|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1539978433|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1539978433|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=868078822|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=868078822|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=868078822|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=868078822|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=452641024|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=452641024|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=452641024|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=452641024|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=963592850|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=0|seed=963592850|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=963592850|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=963592850|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1257633785|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1257633785|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1257633785|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1257633785|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1100146725|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1100146725|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1100146725|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1100146725|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1910407594|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1910407594|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1910407594|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1910407594|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=746528573|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=746528573|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=746528573|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=746528573|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1175759265|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1175759265|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1175759265|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1175759265|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1982942393|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1982942393|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1982942393|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1982942393|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1449442515|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1449442515|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1449442515|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1449442515|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1479720101|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1479720101|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1479720101|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1479720101|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=823847298|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=823847298|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=823847298|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=823847298|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=834246677|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=834246677|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=834246677|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=834246677|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=32015887|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=32015887|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=32015887|model=anthropic/claude-sonnet-4.6": {
+      "status": "failed"
+    }
+  }
+}

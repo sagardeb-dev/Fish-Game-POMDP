@@ -1,0 +1,27 @@
+{
+  "run_id": "20260505T152929Z",
+  "updated_at_utc": "2026-05-05T15:30:10.781967+00:00",
+  "completed": {
+    "panel=observational|method=pc|level=5|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=1276453582|model=openrouter/google/gemini-3-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=5|seed=1276453582|model=openrouter/google/gemini-3-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=1276453582|model=openrouter/google/gemini-3-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=1276453582|model=openrouter/google/gemini-3-pro-preview": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=5|seed=1276453582|model=baseline": {
+      "status": "success"
+    }
+  }
+}

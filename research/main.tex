@@ -1,0 +1,64 @@
+\documentclass{article}
+
+% NeurIPS 2026 Evaluations & Datasets track, non-anonymous draft.
+\usepackage[eandd, nonanonymous]{neurips_2026}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\hypersetup{hypertexnames=false}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{placeins}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{graphicx}
+
+\title{Active Causal Discovery as a Diagnostic Benchmark for LLM Agents}
+
+\author{%
+  Sagar Deb \\
+  QpiAI \\
+  \texttt{sagar.deb@qpiai.tech}
+  \And
+  Devam Shah \\
+  QpiAI \\
+  \texttt{devam.s@qpiai.tech}
+  \And
+  Ashwanth Krishnan \\
+  QpiAI \\
+  \texttt{ashwanth.krishnan@qpiai.tech}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Active causal discovery is a sequential task in which observations typically identify only a Markov-equivalence class, while interventions are needed to orient the remaining structure. We introduce the Active Causal Discovery Benchmark (ACDB), a controlled family of linear--Gaussian SCM instances with anonymized variables, a fixed observe--intervene--submit runtime, and a layered scoring contract that separates adjacency recovery, observationally identifiable orientation, and full directed-graph recovery. ACDB further calibrates evaluation with a random-floor-aware difficulty ladder and paired accepted-seed comparisons, so differences in directed performance are interpretable across methods and graph scales. Across five language models and five active policies, end-to-end \texttt{llm\_raw} directed F1 averaged over L1--L5 ranges from \texttt{0.113} (Haiku-4.5) to \texttt{0.697} (GPT-5.5) against a classical \texttt{pc\_greedy} reference of \texttt{0.689}; supplying that reference as an observational prior raises the four weaker models by \texttt{+0.28} to \texttt{+0.37} directed F1, statistical-tool access alone does not, and the gap to the classical baseline widens with graph scale. Taken together, these results position ACDB as a benchmark for measuring observational, interventional, and end-to-end failures separately rather than compressing active causal discovery into a single graph score.
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_background}
+\FloatBarrier
+\input{sections/03_benchmark}
+\input{sections/04_agents}
+\input{sections/05_results}
+\input{sections/07_related_work}
+\input{sections/075_limitations}
+\input{sections/08_conclusion}
+
+\clearpage
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\input{checklist}
+
+\input{sections/appendix}
+
+\end{document}

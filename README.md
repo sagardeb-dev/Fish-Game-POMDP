@@ -1,269 +1,138 @@
 # ACDB: Active Causal Discovery Benchmark
 
-ACDB is a scientific instrument for evaluating **agentic causal reasoning**. The benchmark does not only ask whether an agent recovers a causal graph. It fixes a hidden linear-Gaussian SCM, exposes limited evidence and actions to the agent, and scores separate layers of failure: adjacency recovery, observationally identifiable orientation, full DAG recovery, and intervention-budget use.
+Code release for *Active Causal Discovery as a Diagnostic Benchmark for LLM Agents*. ACDB evaluates language-model agents on a sequential causal-discovery task with a fixed observe -- intervene -- submit protocol and a layered scoring contract.
 
-The key asymmetry is intentional: the evaluator can construct the true DAG, CPDAG/MEC, SCM metadata, and minimum identifying intervention set; the agent only sees observations, optional tools, optional interventions, and a budget.
+## What the benchmark measures
 
-![Evaluator state vs agent-visible state](reports/figure_prototypes/20260429T063348Z/01_hidden_agent_asymmetry.png)
+Each instance is built from a hidden linear-Gaussian SCM over `d` variables:
 
-## Current Status
-
-- The active code path uses the **v1 scale-calibrated ladder**.
-- The original v0 ladder is preserved in code as `ladder_levels_v0()`.
-- Full GPT-5.4 and Claude Sonnet 4.6 results are **v0 results** and should be treated as calibration/audit evidence, not final v1 benchmark evidence.
-- The only v1 LLM probe currently committed is a **partial DeepSeek V4 Flash smoke run** on OpenRouter.
-- Final v1 results still need fresh random, PC/PC+greedy, and LLM runs on the locked v1 ladder and seed map.
-
-## Benchmark Contract
-
-ACDB instances are generated from fully observed, causally sufficient, linear-Gaussian SCMs with perfect single-node hard interventions. Graphs and SCMs are filtered for validity and faithfulness before sampling data.
-
-Agent actions:
-
-- `observe()` returns the observational panel once.
-- `intervene(var, value)` returns interventional rows while budget remains.
-- `submit_graph(directed_edges, undirected_edges)` terminates the episode.
-
-All agents submit the same `GraphSubmission` object. This shared contract is used by LLM policies, PC baselines, random baselines, and oracle.
-
-![DAG, CPDAG, and intervention example](reports/figure_prototypes/20260429T063348Z/03_dag_cpdag_intervention.png)
-
-## Scoring Layers
-
-Every metric has a theoretical referent:
-
-- `skeleton_f1`: adjacency recovery.
-- `compelled_f1`: observationally identifiable directions in the CPDAG.
-- `directed_f1` and `dag_shd`: full DAG recovery.
-- `efficiency`: intervention use relative to the minimum identifying intervention set.
-
-![Layered scoring contract](reports/figure_prototypes/20260429T063348Z/02_layered_scoring_contract.png)
-
-Full scoring details: [`docs/specs/scoring.md`](docs/specs/scoring.md)
-
-## Instance Generation
-
-At a high level:
-
-```text
-sample DAG
-compute CPDAG / MEC
-reject invalid or poorly identified graphs
-parameterize linear-Gaussian SCM
-reject unfaithful SCMs
-compute minimum identifying intervention set
-permute labels
-sample observational data
-run agent episode
-score submission
+```
+X_i = sum_{j in Pa(i)} w_ij X_j + eps_i,   eps_i ~ N(0, sigma_i^2)
 ```
 
-Full pseudocode: [`docs/specs/causal-discovery-v1-pseudocode.md`](docs/specs/causal-discovery-v1-pseudocode.md)
+The agent only ever sees anonymized variables, an observational sample matrix, and any interventional samples it requests. The evaluator owns the rest: the true DAG `G`, its CPDAG (the observational ceiling), the parameterized SCM, and a benchmark-owned minimum intervention set `I*` that resolves `G` from its CPDAG. This asymmetry is what makes scoring layered.
 
-## V1 Ladder
+**Two truth objects, four scoring layers.** Observational data identifies a Markov equivalence class, not a unique DAG. ACDB therefore scores against two distinct objects -- the CPDAG and the DAG -- and reports four metrics:
 
-The current ladder is a graph-scale/generalization ladder. After L0, sample sizes and noise are held fixed so graph scale is not confounded with decreasing statistical power.
+- `skeleton_f1` -- adjacency recovery against `G`.
+- `compelled_f1` -- direction recovery against the directed edges of CPDAG(`G`) (the part observational data alone is allowed to identify).
+- `directed_f1`, `dag_shd` -- full directed-edge recovery against `G`.
+- `efficiency` -- intervention budget used relative to `|I*|`.
 
-| Level | d | k | density rho | n_obs | n_int | noise_var | slack | exact random Dir-F1 floor |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 0 | 4 | 3 | 0.500 | 50 | 25 | 0.5 | 2 | 0.215 |
-| 1 | 6 | 6 | 0.400 | 50 | 25 | 1.0 | 1 | 0.196 |
-| 2 | 8 | 9 | 0.321 | 50 | 25 | 1.0 | 1 | 0.173 |
-| 3 | 10 | 12 | 0.267 | 50 | 25 | 1.0 | 1 | 0.155 |
-| 4 | 12 | 14 | 0.212 | 50 | 25 | 1.0 | 0 | 0.133 |
-| 5 | 14 | 16 | 0.176 | 50 | 25 | 1.0 | 0 | 0.117 |
+A model can fail on adjacencies, on observational orientations, on interventional orientations, or on intervention budgeting -- and ACDB reports each separately.
 
-Random floor note: for maximum possible directed edges `M=d(d-1)/2`, true edge count `k`, and random submitted edge count `m`, the conditional directed-F1 floor is
+**Random floor.** With `M = d(d-1)/2` candidate edges, a uniform-`m` random submission has closed-form expected directed F1
+```
+E[F1] = (1/(M+1)) * sum_{m=0..M} k*m / (M*(m+k))
+```
+For each level the README's results table reports `directed_f1` alongside this floor so a number above it is meaningful and a number near it is not.
 
-```text
-E[F1 | m] = k*m / [M*(m+k)]
+**Active protocol.** `observe()` returns the observational panel exactly once. `intervene(var, value)` returns one interventional sample matrix per call while budget remains. `submit_graph(directed_edges, undirected_edges)` ends the episode -- leaving an edge undirected is a legitimate output, distinct from omitting it.
+
+## Repository layout
+
+```
+run_ladder.py                 main runner (model panels, ablations)
+run_random_dag_baseline.py    random uniform-m baseline (Appendix C)
+src/causal_discovery/         benchmark assembly, agents, scoring, SCM
+scripts/extract_trace_rows.py trace -> per-step CSV (Appendix F)
+scripts/ladder_random_floor_sanity.py  Monte Carlo random-floor calibration
+traces/ladder/full_*          5 canonical model panels
+traces/aggregated/            per-cell aggregate + 5 per-trace CSVs
+traces/ladder_random_floor_sanity/     calibration outputs
 ```
 
-with the exact discrete floor
+## Reproduce results
 
-```text
-E[F1] = (1/(M+1)) * sum_{m=0}^{M} k*m / [M*(m+k)]
-```
+### 1. Install
 
-This is why v1 reports a random floor beside directed F1 instead of treating random as a normal competitor.
+Requires Python >= 3.12 and `uv`.
 
-![Random floor density calibration](reports/figure_prototypes/20260429T063348Z/05_random_floor_density.png)
-
-The v1 ladder shifts levels away from the high-density v0 region and toward lower random-floor regimes:
-
-![V0 and V1 ladder regions](reports/figure_prototypes/20260429T063348Z/08_v0_v1_ladder_regions.png)
-
-## Supported Policies
-
-Observational panel:
-
-- `pc`: PC algorithm, observational only.
-
-Active panel:
-
-- `pc_greedy`: PC CPDAG followed by budgeted greedy interventions.
-- `llm_raw`: raw observational rows plus intervention actions.
-- `llm_stats`: raw rows, statistical tools, and intervention actions.
-- `pc_cpdag_llm`: PC builds observational graph, LLM uses interventions to orient.
-- `llm_stats_cpdag_greedy`: LLM builds observational graph, greedy orients with interventions.
-- `oracle`: true DAG ceiling (deprecated).
-
-The LLM layer uses LiteLLM through `LiteLLMJSONPolicyModel`, with provider routing for OpenAI, Anthropic, and OpenRouter model strings.
-
-## Figure Prototypes
-
-The current figure prototypes are committed under:
-
-[`reports/figure_prototypes/20260429T063348Z`](reports/figure_prototypes/20260429T063348Z)
-
-They are narrative artifacts, not final paper figures. They intentionally mix conceptual diagrams, archived v0 aggregate plots, and the partial v1 DeepSeek graph-output trace where edge lists are available.
-
-Representative graph-output visualization:
-
-![Representative graph output comparison](reports/figure_prototypes/20260429T063348Z/04_representative_graph_output.png)
-
-Aggregate v0 failure-mode visualization:
-
-![Precision recall and SHD](reports/figure_prototypes/20260429T063348Z/06_precision_recall_shd.png)
-
-Paired active-gain visualization:
-
-![Paired active gain](reports/figure_prototypes/20260429T063348Z/07_active_gain.png)
-
-Interpretation caveat: active gain shows whether the active interface improves final directed-DAG recovery on paired instances. It does not by itself prove correct experimental reasoning; intervention choice and intervention interpretation require trace-level diagnostics.
-
-## Archived V0 Results
-
-These are the full v0 ladder runs. They are preserved because they motivated the v1 calibration work, especially the random-floor and density-leakage analysis.
-
-Sources:
-
-- GPT-5.4: [`traces/ladder/full_ladder_toolcall_run1/results_long.csv`](traces/ladder/full_ladder_toolcall_run1/results_long.csv)
-- Claude Sonnet 4.6: [`traces/ladder/sonnet46_full_ladder_run1/results_long.csv`](traces/ladder/sonnet46_full_ladder_run1/results_long.csv)
-- Random baseline: [`traces/ladder/random_uniform_baseline/results_random_dag_summary.csv`](traces/ladder/random_uniform_baseline/results_random_dag_summary.csv)
-
-Rows are deduplicated by `(level, seed, panel, method, model)` and successful rows are averaged.
-
-### GPT-5.4 V0 Overall
-
-| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
-| active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
-| active | `llm_raw` | 48 | 58.8 | 36.3 | 19.3 | 22.9 | 9.271 | 92.7 |
-| active | `llm_stats` | 48 | 40.0 | 48.0 | 13.3 | 18.8 | 6.583 | 100.0 |
-| active | `oracle` | 48 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-
-### Claude Sonnet 4.6 V0 Overall
-
-| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
-| active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
-| active | `llm_raw` | 48 | 56.3 | 35.0 | 29.6 | 31.7 | 7.250 | 97.9 |
-| active | `llm_stats` | 47 | 62.7 | 46.0 | 22.7 | 28.0 | 8.064 | 100.0 |
-| active | `oracle` | 48 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-
-V0 interpretation:
-
-- PC+greedy provides the strongest non-oracle active reference.
-- LLMs show different precision/recall profiles from PC; F1 alone hides this.
-- Sonnet raw observational performance was strong in v0, but active access did not uniformly improve it.
-- The v0 random floor was high enough to motivate v1 density calibration.
-
-## V1 DeepSeek V4 Flash Probe
-
-This is a **partial smoke/probe**, not a full v1 benchmark result.
-
-Source:
-
-[`traces/ladder/deepseek_v4_flash_ladder_2seed/results_long.csv`](traces/ladder/deepseek_v4_flash_ladder_2seed/results_long.csv)
-
-Run status:
-
-- Model: `openrouter/deepseek/deepseek-v4-flash`
-- Deduplicated rows: `18`
-- Successes: `16`
-- Failures: `2`
-- Both failures were OpenRouter/DeepInfra upstream `429` rate-limit errors.
-- Coverage is limited to L0 plus one L1 PC/observational slice; do not compare this as a full ladder run.
-
-| Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
-|---|---|---:|---:|---:|---:|---:|---:|---:|
-| observational | `pc` | 3 | 97.0 | 100.0 | 22.2 | 26.7 | 2.667 | 100.0 |
-| active | `pc_greedy` | 3 | 97.0 | 100.0 | 94.4 | 97.0 | 0.333 | 66.7 |
-| active | `llm_raw` | 2 | 61.9 | 25.0 | 50.0 | 33.3 | 4.000 | 50.0 |
-| active | `llm_stats` | 1 | 66.7 | 66.7 | 66.7 | 66.7 | 2.000 | 100.0 |
-| active | `oracle` | 2 | 100.0 | 100.0 | 100.0 | 100.0 | 0.000 | 100.0 |
-
-The DeepSeek trace is useful mainly for validating the LiteLLM/OpenRouter path and full trace persistence. It is not enough evidence for model-level claims.
-
-## Running Experiments
-
-Install dependencies:
-
-```powershell
+```bash
 uv sync
 ```
 
-Run a small v1 smoke:
+### 2. API keys
 
-```powershell
-uv run python run_ladder.py --levels 0 --seeds-per-level 1 --models openrouter/deepseek/deepseek-v4-flash --out-dir traces\ladder\deepseek_v4_flash_smoke
+Create `.env` at the repo root with the keys for the panels you want to rerun:
+
+```
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+OPENROUTER_API_KEY=sk-or-...
 ```
 
-Run a fuller v1 ladder:
+The runner refuses to launch if a required key is missing. OpenRouter is used for the Claude panels and Gemini in the paper; replace the `--models` string with a native provider if you prefer.
 
-```powershell
-uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder
+### 3. Run a panel
+
+The five paper panels are produced by the same command, varying only `--models` and `--out-dir`. The retry envvar enables auto-resume on transient provider errors (default 0):
+
+```bash
+LADDER_MAX_RETRIES=20 uv run python run_ladder.py \
+    --levels 0,1,2,3,4,5 \
+    --seeds-per-level 8 \
+    --models gpt-5.5 \
+    --alpha 0.05 \
+    --max-steps-raw 20 \
+    --max-steps-stats 40 \
+    --preflight-seed 20260422 \
+    --out-dir traces/ladder/full_gpt55
 ```
 
-Resume or retry failures:
+`--preflight-seed 20260422` reproduces the 48-seed paired manifest used by every panel, so results are paired by instance across models. The same accepted-seed map appears in every panel's `run_manifest.json`.
 
-```powershell
-uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder --resume
-uv run python run_ladder.py --levels 0,1,2,3,4,5 --seeds-per-level 8 --models gpt-5.4,claude-sonnet-4-6 --out-dir traces\ladder\v1_full_ladder --retry-failed
+| Panel             | `--models`                                       | `--out-dir`                            |
+|-------------------|--------------------------------------------------|----------------------------------------|
+| GPT-5.5           | `gpt-5.5`                                        | `traces/ladder/full_gpt55`             |
+| GPT-5.4-mini      | `gpt-5.4-mini`                                   | `traces/ladder/full_gpt54mini`         |
+| Claude Sonnet 4.6 | `openrouter/anthropic/claude-sonnet-4-6`         | `traces/ladder/full_sonnet46_or`       |
+| Claude Haiku 4.5  | `openrouter/anthropic/claude-haiku-4.5`          | `traces/ladder/full_haiku45_or`        |
+| Gemini 3 Flash    | `google/gemini-3-flash-preview`                  | `traces/ladder/full_gemini3flash`      |
+
+### 4. Smoke test (one level, one seed)
+
+```bash
+uv run python run_ladder.py \
+    --levels 0 \
+    --seeds-per-level 1 \
+    --models gpt-5.5 \
+    --out-dir traces/ladder/smoke_gpt55
 ```
 
-API keys are read from `.env` by default. OpenRouter models require `OPENROUTER_API_KEY`.
+### 5. Random-floor calibration (Appendix C)
 
-## Trace Guarantees
-
-Current LLM traces include:
-
-- `instance_metadata`: true DAG, CPDAG, optimal intervention set, ladder config, seed metadata.
-- `llm_model_call`: request, raw provider response, parsed action, token usage, cost/latency/status.
-- `llm_action`: parsed benchmark action.
-- `llm_tool_result`: statistical tool outputs.
-- `llm_intervention_result`: intervention rows and remaining budget.
-- `work_success` / `work_failed`: terminal status and scores/errors.
-
-This is designed so final scores can be audited against the exact tool calls and model outputs.
-
-## Repository Map
-
-```text
-src/causal_discovery/
-  agents/          LLM policies, LiteLLM adapter, action schemas, tools
-  benchmark/       benchmark construction
-  equivalence/     CPDAG / MEC theory helpers
-  scoring/         GraphSubmission scoring
-  scm/             linear-Gaussian SCM generation and diagnostics
-
-run_ladder.py              main ladder runner
-run_corr_obs_probe.py      correlation-summary LLM ablation probe
-run_random_dag_baseline.py random DAG baseline
-scripts/                   analysis and figure-generation helpers
-docs/specs/                design and scoring specs
-research/                  paper draft and paper figures
-reports/figure_prototypes/ narrative figure prototypes
-traces/                    experiment outputs
+```bash
+uv run python scripts/ladder_random_floor_sanity.py
 ```
 
-## Notes For Future V1 Work
+Produces `traces/ladder_random_floor_sanity/summary.csv` -- the Monte Carlo floor that Appendix C compares to the closed form above.
 
-- Re-run random baseline on the final v1 seed map.
-- Re-run PC and PC+greedy on the same v1 seeds.
-- Freeze prompts before running full LLM ladders.
-- Report random-floor-adjusted interpretation beside directed F1.
-- Treat raw, stats, and summary interfaces as evidence-interface ablations, not as a search for a single winning interface.
+### 6. Resume / retry
+
+`run_ladder.py` checkpoints to `<out-dir>/checkpoint.json` after every work item. To resume an interrupted panel, rerun the exact same command -- it picks up where it left off. To retry only the failed items:
+
+```bash
+uv run python run_ladder.py ... --retry-failed
+```
+
+## Outputs per panel
+
+Each `--out-dir` ends up with:
+
+- `events.jsonl` -- full event log: `instance_metadata`, `llm_model_call` (request, raw response, parsed action, tokens, cost), `llm_action`, `llm_tool_result`, `llm_intervention_result`, `work_success`/`work_failed`. This is what reviewers can re-score from.
+- `results_long.csv` -- one row per (level, seed, method) cell with the four scoring layers.
+- `results_summary.csv` -- per-method aggregates within the panel.
+- `run_manifest.json` -- exact CLI args, model string, accepted-seed map.
+- `checkpoint.json` -- resume state.
+
+## Verifying the paper numbers
+
+The body and appendices aggregate across panels into `traces/aggregated/per_model_per_level_per_method.csv`. Every number in the paper is recomputable from this file plus the per-panel `results_long.csv`. The five per-trace CSVs (`traces/aggregated/trace_*_*.csv`) underlie the case studies in Appendix F.
+
+## Software
+
+- Python >= 3.12 (`pyproject.toml`).
+- LLM dispatch: `litellm` >= 1.79; native OpenAI calls via `openai` >= 2.30.
+- PC inference: `causal-learn` >= 0.1.4.5.
+- Plus `numpy`, `pandas`, `python-dotenv`, `tenacity`. Locked in `uv.lock`.

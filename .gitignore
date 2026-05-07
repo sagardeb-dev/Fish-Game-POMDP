@@ -49,7 +49,6 @@ archive/
 tmp/
 replay/
 docs/*.pdf
-docs/notes/
 LLM_*.md
 llm_call_*.md
 _llm_call*.json

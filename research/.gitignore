@@ -15,7 +15,6 @@
 *.vrb
 
 # Generated PDFs (keep neurips_2026.pdf reference and final build on demand)
-main.pdf
 test_compile.pdf
 
 # Editor scratch

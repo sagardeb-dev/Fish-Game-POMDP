@@ -67,6 +67,12 @@ traces/aggregated/*
 !traces/ladder_random_floor_sanity/
 !traces/ladder_random_floor_sanity/**
 
+# Other top-level trace folders are scratch / pre-v1 development.
+traces/ladder_random_floor_sanity_smoke/
+traces/pc_greedy_v1_probe/
+traces/v0_random_sanity/
+traces/v1_axis_sweep/
+
 # Local archives and scratch artifacts.
 archive/
 tmp/
@@ -82,3 +88,28 @@ llm_call_*.md
 _llm_call*.json
 /RESULTS.md
 /*.txt
+
+# === GitHub release scope (NeurIPS submission code source) ===
+# The published repo carries only what the appendix references: runnable
+# code, the five canonical panel trace folders, and the cited aggregated
+# CSVs. Everything below is kept locally but excluded from the push.
+
+# Top-level folders not part of the code release.
+docs/
+notebooks/
+reports/
+research/
+tests/
+
+# V1 change log is internal; not referenced by the paper.
+/V1_CHANGE_LOG.md
+
+# Runner scripts not cited in the appendix.
+/run_corr_obs_probe.py
+/run_pc_only_ladder.py
+
+# scripts/ — keep only the two utilities cited by the appendix
+# (extract_trace_rows.py: F.131-136; ladder_random_floor_sanity.py: C.36).
+scripts/*
+!scripts/extract_trace_rows.py
+!scripts/ladder_random_floor_sanity.py

@@ -1,3 +1,0 @@
-level,method,model,n,d,k,max_edges,density,skeleton_precision,skeleton_recall,skeleton_f1,directed_precision,directed_recall,directed_f1,dag_shd,efficiency
-0,random_uniform,baseline,1,4,5,6,0.8333333333333334,1.0,0.2,0.33333333333333337,1.0,0.2,0.33333333333333337,4.0,1.0
-overall,random_uniform,baseline,1,4,5,6,0.8333333333333334,1.0,0.2,0.33333333333333337,1.0,0.2,0.33333333333333337,4.0,1.0

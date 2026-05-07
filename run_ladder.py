@@ -83,6 +83,13 @@ class WorkItem:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class LLMRunResult:
+    submission: GraphSubmission
+    model: Any
+    diagnostics: dict[str, int]
+
+
 class TraceWriter:
     def __init__(self, path: Path) -> None:
         self._fh = path.open("a", encoding="utf-8")
@@ -117,11 +124,11 @@ def ladder_levels_v0() -> dict[int, LevelSpec]:
 def ladder_levels_v1() -> dict[int, LevelSpec]:
     return {
         0: LevelSpec(0, d=4, k=3, n_obs=50, n_int=25, noise_var=0.5, budget_slack=2),
-        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=1),
-        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
-        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=0),
+        1: LevelSpec(1, d=6, k=6, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        2: LevelSpec(2, d=8, k=9, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        3: LevelSpec(3, d=10, k=12, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        4: LevelSpec(4, d=12, k=14, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
+        5: LevelSpec(5, d=14, k=16, n_obs=50, n_int=25, noise_var=1.0, budget_slack=2),
     }
 
 
@@ -215,13 +222,15 @@ def make_work_items(levels: list[int], seed_map: dict[int, list[int]], models: l
     for level_id in levels:
         for seed in seed_map[level_id]:
             items.append(WorkItem("observational", "pc", level_id, seed, "baseline"))
-            for model in models:
-                items.append(WorkItem("observational", "llm_raw_obs", level_id, seed, model))
-                items.append(WorkItem("observational", "llm_stats_obs", level_id, seed, model))
+            # --- deprecated: obs-only LLM policies removed in favour of hybrid ablations ---
+            # items.append(WorkItem("observational", "llm_raw_obs", level_id, seed, model))
+            # items.append(WorkItem("observational", "llm_stats_obs", level_id, seed, model))
             items.append(WorkItem("active", "pc_greedy", level_id, seed, "baseline"))
             for model in models:
                 items.append(WorkItem("active", "llm_raw", level_id, seed, model))
                 items.append(WorkItem("active", "llm_stats", level_id, seed, model))
+                items.append(WorkItem("active", "pc_cpdag_llm", level_id, seed, model))
+                items.append(WorkItem("active", "llm_stats_cpdag_greedy", level_id, seed, model))
             items.append(WorkItem("active", "oracle", level_id, seed, "baseline"))
     return items
 
@@ -453,23 +462,24 @@ def run_oracle(instance, runtime_seed: int):
     return output.submission, scores
 
 
-def run_llm(
+def _run_llm_action_loop(
     *,
     instance,
-    runtime_seed: int,
+    env: BenchmarkEnv,
+    obs: np.ndarray,
     model_id: str,
     method: str,
     max_steps_raw: int,
     max_steps_stats: int,
     trace: TraceWriter,
     work_key: str,
-) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
-    env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
-    obs = env.observe()
+    include_observational_data: bool = True,
+    session_context: dict | None = None,
+) -> LLMRunResult:
     latest_intervention_data: np.ndarray | None = None
 
-    allow_interventions = method in {"llm_raw", "llm_stats"}
-    is_stats = method in {"llm_stats", "llm_stats_obs"}
+    allow_interventions = method in {"llm_raw", "llm_stats", "pc_cpdag_llm"}
+    is_stats = method in {"llm_stats", "llm_stats_obs", "llm_stats_cpdag_greedy"}
     max_steps = max_steps_stats if is_stats else max_steps_raw
     logical_budget = env.remaining_budget if allow_interventions else 0
     total_actions = 0
@@ -485,13 +495,13 @@ def run_llm(
         agent = LLMStatsAgent(
             model=model,
             variable_names=names,
-            allow_interventions=allow_interventions,
+            allowed_actions=allowed_actions,
         )
     else:
         agent = LLMRawAgent(
             model=model,
             variable_names=names,
-            allow_interventions=allow_interventions,
+            allowed_actions=allowed_actions,
         )
 
     if agent.allowed_actions != allowed_actions:
@@ -500,16 +510,34 @@ def run_llm(
             f"agent={sorted(agent.allowed_actions)} tool={sorted(allowed_actions)}"
         )
 
-    agent.on_observation(obs, logical_budget)
+    agent.on_observation(
+        obs,
+        logical_budget,
+        include_observational_data=include_observational_data,
+        session_context=session_context,
+    )
     trace.log(
         "llm_observation",
         work_key,
-        {"obs_shape": [int(obs.shape[0]), int(obs.shape[1])], "logical_budget": logical_budget},
+        {
+            "obs_shape": [int(obs.shape[0]), int(obs.shape[1])],
+            "logical_budget": logical_budget,
+            "include_observational_data": include_observational_data,
+            "session_context_keys": sorted(session_context.keys()) if session_context else [],
+        },
     )
 
     for step in range(1, max_steps + 1):
+        is_final_step = step == max_steps
+        effective_allowed_actions = frozenset({"submit_graph"}) if is_final_step else allowed_actions
         try:
-            action = agent.next_action(logical_budget if not allow_interventions else env.remaining_budget)
+            action = agent.next_action(
+                logical_budget if not allow_interventions else env.remaining_budget,
+                allowed_actions=effective_allowed_actions,
+                current_step=step,
+                max_steps=max_steps,
+                final_step=is_final_step,
+            )
         finally:
             if model.last_call is not None and model.calls > total_actions:
                 trace.log("llm_model_call", work_key, {"step": step, **model.last_call})
@@ -649,8 +677,6 @@ def run_llm(
                 directed_edges=directed_edges,
                 undirected_edges=undirected_edges,
             )
-            output = env.submit_graph(submission)
-            scores = score_submission(instance, output.submission)
             diagnostics = {
                 "total_actions": total_actions,
                 "stats_actions": stats_actions,
@@ -658,11 +684,131 @@ def run_llm(
                 "submit_actions": submit_actions,
                 "sanitized_overlap_count": sanitized_overlap_count,
             }
-            return output.submission, scores, model, diagnostics
+            return LLMRunResult(
+                submission=submission,
+                model=model,
+                diagnostics=diagnostics,
+            )
 
         raise RuntimeError(f"Unsupported action type: {type(action).__name__}")
 
     raise RuntimeError(f"LLM session exceeded max_steps={max_steps} without submit_graph")
+
+
+def run_llm(
+    *,
+    instance,
+    runtime_seed: int,
+    model_id: str,
+    method: str,
+    max_steps_raw: int,
+    max_steps_stats: int,
+    trace: TraceWriter,
+    work_key: str,
+) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
+    env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
+    obs = env.observe()
+    result = _run_llm_action_loop(
+        instance=instance,
+        env=env,
+        obs=obs,
+        model_id=model_id,
+        method=method,
+        max_steps_raw=max_steps_raw,
+        max_steps_stats=max_steps_stats,
+        trace=trace,
+        work_key=work_key,
+    )
+    output = env.submit_graph(result.submission)
+    scores = score_submission(instance, output.submission)
+    return output.submission, scores, result.model, result.diagnostics
+
+
+def run_pc_cpdag_llm(
+    *,
+    instance,
+    runtime_seed: int,
+    model_id: str,
+    alpha: float,
+    max_steps_raw: int,
+    max_steps_stats: int,
+    trace: TraceWriter,
+    work_key: str,
+) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
+    from causallearn.search.ConstraintBased.PC import pc
+
+    env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
+    obs = env.observe()
+    cg = pc(obs, alpha=alpha, indep_test="fisherz", show_progress=False, verbose=False)
+    directed, undirected = parse_causallearn_endpoint_matrix(cg.G.graph)
+    context = {
+        "initial_graph_source": "pc",
+        "initial_directed_edges": [list(edge) for edge in sorted(directed)],
+        "initial_undirected_edges": [list(edge) for edge in sorted(undirected)],
+        "observational_summary": {
+            "means": np.round(obs.mean(axis=0), 3).tolist(),
+            "stds": np.round(obs.std(axis=0, ddof=1), 3).tolist(),
+        },
+        "instruction": (
+            "Start from the supplied PC partial graph. Use interventions to resolve "
+            "uncertain directions and submit the final graph."
+        ),
+    }
+    result = _run_llm_action_loop(
+        instance=instance,
+        env=env,
+        obs=obs,
+        model_id=model_id,
+        method="pc_cpdag_llm",
+        max_steps_raw=max_steps_raw,
+        max_steps_stats=max_steps_stats,
+        trace=trace,
+        work_key=work_key,
+        include_observational_data=False,
+        session_context=context,
+    )
+    output = env.submit_graph(result.submission)
+    scores = score_submission(instance, output.submission)
+    return output.submission, scores, result.model, result.diagnostics
+
+
+def run_llm_stats_cpdag_greedy(
+    *,
+    instance,
+    runtime_seed: int,
+    model_id: str,
+    max_steps_raw: int,
+    max_steps_stats: int,
+    trace: TraceWriter,
+    work_key: str,
+) -> tuple[GraphSubmission, Any, Any, dict[str, int]]:
+    env = BenchmarkEnv(instance, np.random.default_rng(runtime_seed))
+    obs = env.observe()
+    result = _run_llm_action_loop(
+        instance=instance,
+        env=env,
+        obs=obs,
+        model_id=model_id,
+        method="llm_stats_cpdag_greedy",
+        max_steps_raw=max_steps_raw,
+        max_steps_stats=max_steps_stats,
+        trace=trace,
+        work_key=work_key,
+    )
+    directed = set(result.submission.directed_edges)
+    undirected = set(result.submission.undirected_edges)
+    greedy_used = resolve_with_interventions(env, directed, undirected, obs)
+    submission = GraphSubmission(
+        num_nodes=instance.config.d,
+        directed_edges=frozenset(directed),
+        undirected_edges=frozenset(undirected),
+    )
+    output = env.submit_graph(submission)
+    scores = score_submission(instance, output.submission)
+    diagnostics = dict(result.diagnostics)
+    diagnostics["total_actions"] += greedy_used
+    diagnostics["intervene_actions"] += greedy_used
+    return output.submission, scores, result.model, diagnostics
 
 
 def now_run_id() -> str:
@@ -670,9 +816,18 @@ def now_run_id() -> str:
 
 
 def write_json_atomic(path: Path, payload: dict[str, Any]) -> None:
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
-    tmp.replace(path)
+    for attempt in range(10):
+        try:
+            tmp.replace(path)
+            return
+        except PermissionError:
+            if attempt == 9:
+                raise
+            time.sleep(0.2 * (attempt + 1))
+    if tmp.exists():
+        tmp.unlink(missing_ok=True)
 
 
 def append_row(path: Path, row: dict[str, Any], header: list[str]) -> None:
@@ -834,8 +989,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--retry-failed", action="store_true")
     parser.add_argument("--alpha", type=float, default=0.05)
-    parser.add_argument("--max-steps-raw", type=int, default=16)
-    parser.add_argument("--max-steps-stats", type=int, default=32)
+    parser.add_argument("--max-steps-raw", type=int, default=20)
+    parser.add_argument("--max-steps-stats", type=int, default=40)
     parser.add_argument("--seed-map-file", default="")
     parser.add_argument("--preflight-seed", type=int, default=20260422)
     parser.add_argument("--max-candidates-per-level", type=int, default=50000)
@@ -921,7 +1076,7 @@ def main() -> None:
     required_providers = {
         provider_for_model(item.model)
         for item in work_items
-        if item.method.startswith("llm_")
+        if item.model != "baseline"
     }
     if "openai" in required_providers and not openai_api_key:
         raise RuntimeError(
@@ -1035,6 +1190,49 @@ def main() -> None:
                 row["intervene_actions"] = diagnostics["intervene_actions"]
                 row["submit_actions"] = diagnostics["submit_actions"]
                 row["sanitized_overlap_count"] = diagnostics["sanitized_overlap_count"]
+            elif item.method == "pc_cpdag_llm":
+                submission, scores, model_usage, diagnostics = run_pc_cpdag_llm(
+                    instance=instance,
+                    runtime_seed=runtime_seed,
+                    model_id=item.model,
+                    alpha=args.alpha,
+                    max_steps_raw=args.max_steps_raw,
+                    max_steps_stats=args.max_steps_stats,
+                    trace=trace,
+                    work_key=item.key,
+                )
+                row["prompt_tokens"] = model_usage.prompt_tokens
+                row["completion_tokens"] = model_usage.completion_tokens
+                row["total_tokens"] = model_usage.total_tokens
+                row["cache_creation_input_tokens"] = model_usage.cache_creation_input_tokens
+                row["cache_read_input_tokens"] = model_usage.cache_read_input_tokens
+                row["cost_usd"] = model_usage.total_cost_usd
+                row["total_actions"] = diagnostics["total_actions"]
+                row["stats_actions"] = diagnostics["stats_actions"]
+                row["intervene_actions"] = diagnostics["intervene_actions"]
+                row["submit_actions"] = diagnostics["submit_actions"]
+                row["sanitized_overlap_count"] = diagnostics["sanitized_overlap_count"]
+            elif item.method == "llm_stats_cpdag_greedy":
+                submission, scores, model_usage, diagnostics = run_llm_stats_cpdag_greedy(
+                    instance=instance,
+                    runtime_seed=runtime_seed,
+                    model_id=item.model,
+                    max_steps_raw=args.max_steps_raw,
+                    max_steps_stats=args.max_steps_stats,
+                    trace=trace,
+                    work_key=item.key,
+                )
+                row["prompt_tokens"] = model_usage.prompt_tokens
+                row["completion_tokens"] = model_usage.completion_tokens
+                row["total_tokens"] = model_usage.total_tokens
+                row["cache_creation_input_tokens"] = model_usage.cache_creation_input_tokens
+                row["cache_read_input_tokens"] = model_usage.cache_read_input_tokens
+                row["cost_usd"] = model_usage.total_cost_usd
+                row["total_actions"] = diagnostics["total_actions"]
+                row["stats_actions"] = diagnostics["stats_actions"]
+                row["intervene_actions"] = diagnostics["intervene_actions"]
+                row["submit_actions"] = diagnostics["submit_actions"]
+                row["sanitized_overlap_count"] = diagnostics["sanitized_overlap_count"]
             else:
                 raise RuntimeError(f"Unknown method: {item.method}")
 
@@ -1088,4 +1286,19 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    max_retries = int(os.environ.get("LADDER_MAX_RETRIES", "0"))
+    if max_retries <= 0:
+        main()
+    else:
+        for _attempt in range(1, max_retries + 1):
+            try:
+                main()
+                break
+            except KeyboardInterrupt:
+                raise
+            except Exception as exc:
+                print(f"\n[crash {_attempt}/{max_retries}] {type(exc).__name__}: {exc}")
+                if _attempt == max_retries:
+                    raise
+                print("[auto-resuming in 10s...]")
+                time.sleep(10)

@@ -1,43 +1,84 @@
-# Python
+# Python/cache
 __pycache__/
-*.py[oc]
+*.py[cod]
+*.egg-info/
 build/
 dist/
 wheels/
-*.egg-info
-
-# Virtual environments
-.venv/
-
-# Environment / secrets
-.env
-.env.*
-
-# Generated output
-.pytest-tmp/
-# Caches
 .pytest_cache/
+.pytest-tmp/
 .pytest-tmp*/
 .mypy_cache/
 .ruff_cache/
 
-# IDE
+# Virtual environments and local config
+.venv/
+.env
+.env.*
 .vscode/
 .idea/
-
-# Claude Code
 .claude/
+.DS_Store
 
-# Non-code directories (docs, reports, research kept locally, not in git)
+# LaTeX build output
+research/*.aux
+research/*.bbl
+research/*.blg
+research/*.log
+research/*.out
+research/*.fls
+research/*.fdb_latexmk
+research/*.synctex.gz
+research/*.dvi
+research/build_*.txt
+research/pdflatex*.fls
+
+# Generated figures: keep only paper/appendix figures referenced by TeX.
+research/figures/generated/*
+!research/figures/generated/fig_dag_cpdag_intervention.pdf
+!research/figures/generated/fig_protocol_scoring.pdf
+!research/figures/generated/fig_results_model_ablation_v2.png
+!research/figures/generated/fig_random_floor.pdf
+!research/figures/generated/fig_e_score_axis_disagreement.pdf
+!research/figures/generated/fig_e_gap_above_floor_by_level.pdf
+
+# Experiment traces: keep only canonical paper panels and aggregate exhibits.
+traces/ladder/*
+!traces/ladder/full_gpt55/
+!traces/ladder/full_gpt55/**
+!traces/ladder/full_gpt54mini/
+!traces/ladder/full_gpt54mini/**
+!traces/ladder/full_sonnet46_or/
+!traces/ladder/full_sonnet46_or/**
+!traces/ladder/full_haiku45_or/
+!traces/ladder/full_haiku45_or/**
+!traces/ladder/full_gemini3flash/
+!traces/ladder/full_gemini3flash/**
+
+traces/aggregated/*
+!traces/aggregated/per_model_per_level_per_method.csv
+!traces/aggregated/trace_1_gpt55_l3_seed362855691_llm_raw.csv
+!traces/aggregated/trace_2_haiku45_l3_seed362855691_llm_raw.csv
+!traces/aggregated/trace_3_gpt55_l3_seed589330817_pc_cpdag_llm.csv
+!traces/aggregated/trace_4_gpt55_l3_seed1877150515_llm_stats.csv
+!traces/aggregated/trace_5_gpt55_l4_seed511033471_llm_raw.csv
+
+# Random-floor calibration used by Appendix C.
+!traces/ladder_random_floor_sanity/
+!traces/ladder_random_floor_sanity/**
+
+# Local archives and scratch artifacts.
 archive/
-
-
 tmp/
 replay/
-tests/
-scripts/
-
-# Misc
-uv.lock
-.python-version
-*.txt
+docs/*.pdf
+docs/notes/
+research/_backups/
+research/_formatting_extracted/
+research_frozen_*/
+reports/figure_prototypes/
+LLM_*.md
+llm_call_*.md
+_llm_call*.json
+/RESULTS.md
+/*.txt

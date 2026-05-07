@@ -1,0 +1,1014 @@
+{
+  "run_id": "20260504T111120Z",
+  "updated_at_utc": "2026-05-04T13:12:54.275134+00:00",
+  "completed": {
+    "panel=observational|method=pc|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1276453582|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1276453582|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1276453582|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1276453582|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=1276453582|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=27998312|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=27998312|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=27998312|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=27998312|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=27998312|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=931551983|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=931551983|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=931551983|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=931551983|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=931551983|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=974369856|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=974369856|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=974369856|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=974369856|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=974369856|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=1539978433|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=1539978433|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=1539978433|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=1539978433|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=1539978433|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=868078822|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=868078822|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=868078822|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=868078822|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=868078822|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=452641024|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=452641024|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=452641024|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=452641024|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=452641024|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=0|seed=963592850|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=0|seed=963592850|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=0|seed=963592850|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=0|seed=963592850|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=0|seed=963592850|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1257633785|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1257633785|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1257633785|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1257633785|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1257633785|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1100146725|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1100146725|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1100146725|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1100146725|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1100146725|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1910407594|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1910407594|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1910407594|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1910407594|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1910407594|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=746528573|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=746528573|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=746528573|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=746528573|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=746528573|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1175759265|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1175759265|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1175759265|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1175759265|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1175759265|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1982942393|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1982942393|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1982942393|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1982942393|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1982942393|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1449442515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1449442515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1449442515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1449442515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1449442515|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=1|seed=1479720101|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=1|seed=1479720101|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=1|seed=1479720101|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=1|seed=1479720101|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=1|seed=1479720101|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=823847298|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=823847298|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=823847298|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=823847298|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=823847298|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=834246677|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats|level=2|seed=834246677|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=834246677|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=834246677|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=834246677|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=32015887|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=32015887|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=32015887|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=32015887|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=32015887|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=716908331|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=716908331|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=716908331|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=716908331|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=716908331|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1426457537|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1426457537|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1426457537|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1426457537|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=1426457537|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=684342303|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=684342303|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=684342303|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=684342303|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=2|seed=684342303|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1207468583|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1207468583|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1207468583|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1207468583|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=1207468583|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=2|seed=1612783012|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=2|seed=1612783012|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=2|seed=1612783012|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=2|seed=1612783012|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=2|seed=1612783012|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1329552115|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=1329552115|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=1329552115|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=1329552115|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=1329552115|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=160719912|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=160719912|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=160719912|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=160719912|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=160719912|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=362855691|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=362855691|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=362855691|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=362855691|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=362855691|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=589330817|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=589330817|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=589330817|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=589330817|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=3|seed=589330817|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=1877150515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1877150515|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1877150515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=1877150515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=1877150515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=1877150515|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=1877150515|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=370845052|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=370845052|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=370845052|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=370845052|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=370845052|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=370845052|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=370845052|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=976218778|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=976218778|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=976218778|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=976218778|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=976218778|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=976218778|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=976218778|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=3|seed=1286035187|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=3|seed=1286035187|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=3|seed=1286035187|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=3|seed=1286035187|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=3|seed=1286035187|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=3|seed=1286035187|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=3|seed=1286035187|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=518645330|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=518645330|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=518645330|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=518645330|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=518645330|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=518645330|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=4|seed=518645330|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=511033471|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=511033471|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=511033471|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=511033471|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=511033471|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=511033471|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=511033471|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=1198956094|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=1198956094|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=1198956094|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=1198956094|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=1198956094|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=1198956094|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=1198956094|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=154587426|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=154587426|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=154587426|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=154587426|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=154587426|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=154587426|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=4|seed=154587426|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=1368642322|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=1368642322|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=1368642322|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=1368642322|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=1368642322|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=1368642322|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=1368642322|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=1163629188|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=1163629188|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=1163629188|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=1163629188|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=1163629188|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=1163629188|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=1163629188|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=1332933138|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=1332933138|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=1332933138|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=1332933138|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=1332933138|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=1332933138|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=1332933138|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=4|seed=1231061499|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=4|seed=1231061499|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=4|seed=1231061499|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=4|seed=1231061499|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=4|seed=1231061499|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=4|seed=1231061499|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=4|seed=1231061499|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=1526642568|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=1526642568|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=1526642568|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=1526642568|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=1526642568|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=1526642568|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "failed"
+    },
+    "panel=active|method=oracle|level=5|seed=1526642568|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=1170708238|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=1170708238|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=1170708238|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=1170708238|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=1170708238|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=1170708238|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=1170708238|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=385840006|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=385840006|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=385840006|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=385840006|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=385840006|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=385840006|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=385840006|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=32447648|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=32447648|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=32447648|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=32447648|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=32447648|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=32447648|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=32447648|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=1017236502|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=1017236502|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=1017236502|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=1017236502|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=1017236502|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=1017236502|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=1017236502|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=1717602974|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=1717602974|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=1717602974|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=1717602974|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=1717602974|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=1717602974|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=1717602974|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=480184089|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=480184089|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=480184089|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=480184089|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=480184089|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=480184089|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=480184089|model=baseline": {
+      "status": "success"
+    },
+    "panel=observational|method=pc|level=5|seed=2015902496|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=pc_greedy|level=5|seed=2015902496|model=baseline": {
+      "status": "success"
+    },
+    "panel=active|method=llm_raw|level=5|seed=2015902496|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats|level=5|seed=2015902496|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=pc_cpdag_llm|level=5|seed=2015902496|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=llm_stats_cpdag_greedy|level=5|seed=2015902496|model=openrouter/anthropic/claude-haiku-4.5": {
+      "status": "success"
+    },
+    "panel=active|method=oracle|level=5|seed=2015902496|model=baseline": {
+      "status": "success"
+    }
+  }
+}

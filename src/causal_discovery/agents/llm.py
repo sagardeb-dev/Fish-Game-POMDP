@@ -25,6 +25,10 @@ from causal_discovery.agents.prompts import (
 from causal_discovery.equivalence.cpdag import canonical_undirected_edge
 
 
+MAX_WORKING_MEMORY_ITEMS = 12
+MAX_REASONING_SUMMARY_CHARS = 300
+
+
 class LLMDecisionModel(Protocol):
     def complete(
         self,
@@ -32,14 +36,34 @@ class LLMDecisionModel(Protocol):
         system_prompt: str,
         session_prompt: str,
         tool_history: tuple[ToolResult, ...],
+        working_memory: tuple[dict, ...],
         remaining_budget: int,
+        allowed_actions: frozenset[str] | None = None,
+        current_step: int | None = None,
+        max_steps: int | None = None,
+        final_step: bool = False,
     ) -> str: ...
 
 
 class SessionAgent(Protocol):
-    def on_observation(self, data: np.ndarray, budget: int) -> None: ...
+    def on_observation(
+        self,
+        data: np.ndarray,
+        budget: int,
+        *,
+        include_observational_data: bool = True,
+        session_context: dict | None = None,
+    ) -> None: ...
 
-    def next_action(self, remaining_budget: int) -> AgentAction: ...
+    def next_action(
+        self,
+        remaining_budget: int,
+        *,
+        allowed_actions: frozenset[str] | None = None,
+        current_step: int | None = None,
+        max_steps: int | None = None,
+        final_step: bool = False,
+    ) -> AgentAction: ...
 
     def on_intervention_result(
         self, var: int, value: float, data: np.ndarray, remaining_budget: int
@@ -59,31 +83,88 @@ class _BaseLLMAgent:
         self._observational_data: np.ndarray | None = None
         self._session_prompt: str = ""
         self._tool_history: list[ToolResult] = []
+        self._working_memory: list[dict] = []
+        self._include_observational_data = True
+        self._session_context: dict | None = None
 
-    def on_observation(self, data: np.ndarray, budget: int) -> None:
+    def on_observation(
+        self,
+        data: np.ndarray,
+        budget: int,
+        *,
+        include_observational_data: bool = True,
+        session_context: dict | None = None,
+    ) -> None:
         self._observational_data = np.array(data, copy=True)
+        self._include_observational_data = include_observational_data
+        self._session_context = dict(session_context) if session_context else None
         self._session_prompt = build_session_prompt(
-            self.variable_names, self._observational_data, budget
+            self.variable_names,
+            self._observational_data,
+            budget,
+            self.allowed_actions,
+            include_observational_data=self._include_observational_data,
+            session_context=self._session_context,
         )
 
-    def next_action(self, remaining_budget: int) -> AgentAction:
+    def next_action(
+        self,
+        remaining_budget: int,
+        *,
+        allowed_actions: frozenset[str] | None = None,
+        current_step: int | None = None,
+        max_steps: int | None = None,
+        final_step: bool = False,
+    ) -> AgentAction:
         if self._observational_data is None:
             raise RuntimeError("Observation must be provided before requesting actions")
 
+        effective_allowed_actions = allowed_actions or self.allowed_actions
+        session_prompt = build_session_prompt(
+            self.variable_names,
+            self._observational_data,
+            remaining_budget,
+            effective_allowed_actions,
+            include_observational_data=self._include_observational_data,
+            session_context=self._session_context,
+        )
         raw = self.model.complete(
             system_prompt=self._system_prompt,
-            session_prompt=self._session_prompt,
+            session_prompt=session_prompt,
             tool_history=tuple(self._tool_history),
+            working_memory=tuple(self._working_memory),
             remaining_budget=remaining_budget,
+            allowed_actions=effective_allowed_actions,
+            current_step=current_step,
+            max_steps=max_steps,
+            final_step=final_step,
         )
         payload = _parse_json_object(raw)
         action_name = str(payload.get("action", "")).strip()
-        if action_name not in self.allowed_actions:
+        if action_name not in effective_allowed_actions:
             raise ValueError(
                 f"Action '{action_name}' is not allowed for this agent: "
-                f"{sorted(self.allowed_actions)}"
+                f"{sorted(effective_allowed_actions)}"
             )
-        return _parse_action_payload(payload)
+        action = _parse_action_payload(payload)
+        self._remember_action(current_step, action_name, getattr(action, "reasoning_summary", ""))
+        return action
+
+    def _remember_action(
+        self, step: int | None, action_name: str, reasoning_summary: str
+    ) -> None:
+        summary = " ".join(str(reasoning_summary or "").split())[:MAX_REASONING_SUMMARY_CHARS]
+        if not summary:
+            return
+        self._working_memory.append(
+            {
+                "step": int(step) if step is not None else None,
+                "action": action_name,
+                "reasoning_summary": summary,
+            }
+        )
+        if len(self._working_memory) > MAX_WORKING_MEMORY_ITEMS:
+            self._working_memory = self._working_memory[-MAX_WORKING_MEMORY_ITEMS:]
 
     def on_intervention_result(
         self, var: int, value: float, data: np.ndarray, remaining_budget: int
@@ -109,19 +190,13 @@ class LLMRawAgent(_BaseLLMAgent):
         self,
         model: LLMDecisionModel,
         variable_names: tuple[str, ...],
-        allow_interventions: bool = True,
+        allowed_actions: frozenset[str],
     ):
         super().__init__(
             model=model,
             variable_names=variable_names,
-            allowed_actions=(
-                frozenset({"intervene", "submit_graph"})
-                if allow_interventions
-                else frozenset({"submit_graph"})
-            ),
-            _system_prompt=build_system_prompt_raw(
-                allow_interventions=allow_interventions
-            ),
+            allowed_actions=allowed_actions,
+            _system_prompt=build_system_prompt_raw(allowed_actions),
         )
 
 
@@ -130,32 +205,13 @@ class LLMStatsAgent(_BaseLLMAgent):
         self,
         model: LLMDecisionModel,
         variable_names: tuple[str, ...],
-        allow_interventions: bool = True,
+        allowed_actions: frozenset[str],
     ):
         super().__init__(
             model=model,
             variable_names=variable_names,
-            allowed_actions=frozenset(
-                (
-                    {
-                        "correlation",
-                        "partial_correlation",
-                        "independence_test",
-                        "intervene",
-                        "submit_graph",
-                    }
-                    if allow_interventions
-                    else {
-                        "correlation",
-                        "partial_correlation",
-                        "independence_test",
-                        "submit_graph",
-                    }
-                )
-            ),
-            _system_prompt=build_system_prompt_stats(
-                allow_interventions=allow_interventions
-            ),
+            allowed_actions=allowed_actions,
+            _system_prompt=build_system_prompt_stats(allowed_actions),
         )
 
 
@@ -179,6 +235,7 @@ def _parse_action_payload(payload: dict) -> AgentAction:
         return InterveneAction(
             var=_parse_index(payload["var"], field_name="var"),
             value=float(payload["value"]),
+            reasoning_summary=str(payload.get("reasoning_summary", "")),
         )
     if action == "submit_graph":
         directed = tuple(_parse_directed_edges(payload.get("directed_edges", [])))
@@ -192,6 +249,7 @@ def _parse_action_payload(payload: dict) -> AgentAction:
         return CorrelationAction(
             i=_parse_index(payload["i"], field_name="i"),
             j=_parse_index(payload["j"], field_name="j"),
+            reasoning_summary=str(payload.get("reasoning_summary", "")),
         )
     if action == "partial_correlation":
         cond = tuple(
@@ -202,6 +260,7 @@ def _parse_action_payload(payload: dict) -> AgentAction:
             i=_parse_index(payload["i"], field_name="i"),
             j=_parse_index(payload["j"], field_name="j"),
             conditioning_on=cond,
+            reasoning_summary=str(payload.get("reasoning_summary", "")),
         )
     if action == "independence_test":
         cond = tuple(
@@ -213,6 +272,7 @@ def _parse_action_payload(payload: dict) -> AgentAction:
             j=_parse_index(payload["j"], field_name="j"),
             conditioning_on=cond,
             alpha=float(payload.get("alpha", 0.05)),
+            reasoning_summary=str(payload.get("reasoning_summary", "")),
         )
     raise ValueError(f"Unsupported action '{action}'")
 

@@ -11,6 +11,7 @@ from causal_discovery.scoring.submission import DirectedEdge, UndirectedEdge
 class InterveneAction:
     var: int
     value: float
+    reasoning_summary: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +25,7 @@ class SubmitGraphAction:
 class CorrelationAction:
     i: int
     j: int
+    reasoning_summary: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +33,7 @@ class PartialCorrelationAction:
     i: int
     j: int
     conditioning_on: tuple[int, ...]
+    reasoning_summary: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +42,7 @@ class IndependenceTestAction:
     j: int
     conditioning_on: tuple[int, ...]
     alpha: float = 0.05
+    reasoning_summary: str = ""
 
 
 AgentAction = (

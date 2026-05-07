@@ -1,0 +1,138 @@
+\section{Trace exhibits}
+\label{app:traces}
+
+This appendix gives concrete event-log views of agent behaviour behind the §\ref{sec:results} headline numbers and the per-cell aggregates of Appendix~\ref{app:results}. Each exhibit is one trace from a canonical \texttt{events.jsonl} (Appendix~\ref{app:repro:models}), selected by the \texttt{key} field that uniquely identifies a (panel, method, level, seed, model) cell. We show five traces: one paired success/failure on the same L3 instance (F.\ref{app:traces:paired}), and three policy-contrast exhibits (F.\ref{app:traces:cpdag}--F.\ref{app:traces:scale}). The action vocabulary used in the tables is defined in Appendix~\ref{app:policies}.
+
+\subsection{Trace schema and selection}
+\label{app:traces:schema}
+
+Each row in the trace tables corresponds to one \texttt{llm\_action} event in \texttt{events.jsonl}, with the immediately following \texttt{llm\_tool\_result} or \texttt{llm\_intervention\_result} summarised in the \emph{obs} column; the final row reports the \texttt{work\_success} score for the submitted graph. The \texttt{instance\_metadata} event populates the table caption (true edges, CPDAG, intervention budget, optimal-intervention set) but is not rendered as a row, and \texttt{llm\_observation} / \texttt{llm\_model\_call} events (which carry the prompt and the model's full response) are folded into the \emph{action} and \emph{args} columns. All \texttt{independence\_test} calls use the global $\alpha = 0.05$ from §\ref{sec:agents}.
+
+A trace is selected by a single grep on the panel's events file:
+\begin{verbatim}
+key = "panel=active|method=<M>|level=<L>|seed=<S>|model=<X>"
+\end{verbatim}
+Each row of every table below traces back to one event line under that key in the file path given by Appendix~\ref{app:repro:models}; the per-trace CSVs at \texttt{traces/aggregated/trace\_*.csv} bridge the raw events to these tables.
+
+\subsection{Paired exhibit: GPT-5.5 vs Claude Haiku 4.5 on the same L3 instance}
+\label{app:traces:paired}
+
+Both runs see the same L3 instance ($d = 10$, $k = 12$): true DAG edges $\{(0,8), (0,9), (1,3), (1,8), (4,3), (4,7), (5,4), (5,7), (6,2), (6,3), (6,7), (9,4)\}$, observational CPDAG with $10$ directed and $2$ undirected edges ($\{0,9\}, \{2,6\}$), intervention budget $4$, optimal-intervention set $\{6, 9\}$. Both runs use \texttt{llm\_raw} (no PC scaffold, no statistical tools).
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}r l l l@{}}
+\toprule
+step & action & args & obs \\
+\midrule
+1 & \texttt{intervene}    & \texttt{var=2, val=4.0}   & \texttt{25 samples; budget left 3} \\
+2 & \texttt{intervene}    & \texttt{var=6, val=2.5}   & \texttt{25 samples; budget left 2} \\
+3 & \texttt{intervene}    & \texttt{var=3, val=6.0}   & \texttt{25 samples; budget left 1} \\
+4 & \texttt{intervene}    & \texttt{var=4, val=4.0}   & \texttt{25 samples; budget left 0} \\
+5 & \texttt{submit\_graph} & \texttt{|E\_d|=10, |E\_u|=0} & \texttt{dir\_f1=0.818, SHD=4} \\
+\bottomrule
+\end{tabular}
+\caption{GPT-5.5, \texttt{llm\_raw}, L3, seed \texttt{362855691}. Spends all $4$ interventions on a coherent acyclic chain ($\{2, 6, 3, 4\}$ — $6$ matches the optimal set, $3$ and $4$ are downstream colliders) and recovers a $10$-edge DAG at \texttt{directed\_f1} $= 0.818$.}
+\label{tab:trace1}
+\end{table}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}r l l l@{}}
+\toprule
+step & action & args & obs \\
+\midrule
+1 & \texttt{intervene}    & \texttt{var=3, val=10}   & \texttt{25 samples; budget left 3} \\
+2 & \texttt{intervene}    & \texttt{var=4, val=5.0}  & \texttt{25 samples; budget left 2} \\
+3 & \texttt{submit\_graph} & \texttt{|E\_d|=9, |E\_u|=0} & \texttt{dir\_f1=0.000, SHD=19} \\
+\bottomrule
+\end{tabular}
+\caption{Claude Haiku 4.5, \texttt{llm\_raw}, L3, seed \texttt{362855691} (same instance as Table~\ref{tab:trace1}). Submits after only $2$ of $4$ available interventions, on variables outside the optimal set; the resulting $9$-edge submission scores \texttt{directed\_f1} $= 0.000$ (all submitted directed edges are wrong-orientation or wrong-pair) with $\mathrm{SHD} = 19$.}
+\label{tab:trace2}
+\end{table}
+
+GPT-5.5 exhausts its budget on a deliberately ordered intervention sequence and submits a graph with $10$ of $12$ true edges correctly oriented. Haiku-4.5, on the same instance, terminates after $2$ interventions on variables not in the optimal set ($\{6, 9\}$) and submits a $9$-edge graph in which no submitted directed edge matches the true DAG. The contrast is not about the action vocabulary — both agents have the same five tools and the same $4$-intervention budget — but about how that budget is spent and whether the submission step is invoked before the evidence supports it.
+
+\subsection{CPDAG-guided LLM exhibit}
+\label{app:traces:cpdag}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}r l l l@{}}
+\toprule
+step & action & args & obs \\
+\midrule
+1 & \texttt{intervene}    & \texttt{var=0, val=3.5}   & \texttt{25 samples; budget left 2} \\
+2 & \texttt{intervene}    & \texttt{var=2, val=2.5}   & \texttt{25 samples; budget left 1} \\
+3 & \texttt{submit\_graph} & \texttt{|E\_d|=9, |E\_u|=0} & \texttt{dir\_f1=0.857, SHD=3} \\
+\bottomrule
+\end{tabular}
+\caption{GPT-5.5, \texttt{pc\_cpdag\_llm}, L3, seed \texttt{589330817}. Instance: $d = 10$, $k = 12$, CPDAG with $9$ directed and $3$ undirected edges ($\{0,2\}, \{0,4\}, \{2,6\}$), intervention budget $3$, optimal set $\{2\}$.}
+\label{tab:trace3}
+\end{table}
+
+Handed the PC-inferred CPDAG, the agent's task collapses to orienting the $3$ remaining undirected edges. Both interventions land on endpoints of those edges ($0$ and $2$ — $2$ is the optimal-set element), and the agent submits one step early with $1$ intervention left over: \texttt{directed\_f1} $= 0.857$, $\mathrm{SHD} = 3$. The action mix shifts entirely away from \texttt{correlation}/\texttt{partial\_correlation} (which the policy could call) toward direct interventions on under-determined nodes, then submission.
+
+\subsection{Statistical-tools exhibit}
+\label{app:traces:stats}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}r l l l@{}}
+\toprule
+step & action & args & obs \\
+\midrule
+1 & \texttt{intervene}          & \texttt{var=1, val=4.0}                       & \texttt{25 samples; budget left 2} \\
+2 & \texttt{independence\_test} & \texttt{i=0, j=2, cond=\{1\}}                  & \texttt{indep=True, p=0.111} \\
+3 & \texttt{independence\_test} & \texttt{i=0, j=1, cond=\{2,3,4,5,6,7,8,9\}}    & \texttt{indep=True, p=0.995} \\
+4 & \texttt{intervene}          & \texttt{var=2, val=5.0}                       & \texttt{25 samples; budget left 1} \\
+5 & \texttt{independence\_test} & \texttt{i=0, j=2, cond=\{1,3,4,5,6,7,8,9\}}    & \texttt{indep=True, p=0.964} \\
+6 & \texttt{submit\_graph}       & \texttt{|E\_d|=9, |E\_u|=0}                  & \texttt{dir\_f1=0.762, SHD=5} \\
+\bottomrule
+\end{tabular}
+\caption{GPT-5.5, \texttt{llm\_stats}, L3, seed \texttt{1877150515}. Instance: $d = 10$, $k = 12$, intervention budget $3$, optimal set $\{0\}$.}
+\label{tab:trace4}
+\end{table}
+
+The agent interleaves interventions with three Fisher-$z$ independence tests: an unconditional-style test on $(0, 2 \mid \{1\})$, a high-conditioning-set test on $(0, 1 \mid \text{rest})$ that rules out a direct edge, and a follow-up on $(0, 2)$ after intervening on $2$. All three return \texttt{indep=True}; the final submission omits direct edges between $0$ and either $1$ or $2$, consistent with what the tests indicated. The trace shows what the agent does \emph{with} statistical tools — not that they win on this seed (the \texttt{llm\_raw} run on this instance scores within $0.012$).
+
+\subsection{Scale exhibit at L4}
+\label{app:traces:scale}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}r l l l@{}}
+\toprule
+step & action & args & obs \\
+\midrule
+1 & \texttt{intervene}    & \texttt{var=1, val=3.0}    & \texttt{25 samples; budget left 5} \\
+2 & \texttt{intervene}    & \texttt{var=6, val=10.0}   & \texttt{25 samples; budget left 4} \\
+3 & \texttt{intervene}    & \texttt{var=0, val=3.0}    & \texttt{25 samples; budget left 3} \\
+4 & \texttt{intervene}    & \texttt{var=2, val=2.5}    & \texttt{25 samples; budget left 2} \\
+5 & \texttt{intervene}    & \texttt{var=3, val=3.0}    & \texttt{25 samples; budget left 1} \\
+6 & \texttt{intervene}    & \texttt{var=5, val=2.0}    & \texttt{25 samples; budget left 0} \\
+7 & \texttt{submit\_graph} & \texttt{|E\_d|=8, |E\_u|=0} & \texttt{dir\_f1=0.636, SHD=7} \\
+\bottomrule
+\end{tabular}
+\caption{GPT-5.5, \texttt{llm\_raw}, L4, seed \texttt{511033471}. Instance: $d = 12$, $k = 14$, intervention budget $6$, optimal-intervention set $\{0, 1, 4, 5\}$.}
+\label{tab:trace5}
+\end{table}
+
+At L4 the agent uses all $6$ interventions before submitting. Three of the six chosen variables ($\{0, 1, 5\}$) match the optimal set; $\{2, 3, 6\}$ do not. The submission has $8$ of $14$ true edges correctly oriented (\texttt{directed\_f1} $= 0.636$, $\mathrm{SHD} = 7$), a measurable drop from the L3 \texttt{llm\_raw} success in Table~\ref{tab:trace1} ($0.818$) on a comparable budget per node.
+
+\subsection{Reproducing or extending these traces}
+\label{app:traces:reproduce}
+
+The five trace CSVs are at \texttt{traces/aggregated/trace\_1\_*.csv} through \texttt{trace\_5\_*.csv} in the repository (Appendix~\ref{app:repro:repo}). They are derived from the panel \texttt{events.jsonl} files via \texttt{scripts/extract\_trace\_rows.py}, invoked as e.g.\
+\begin{verbatim}
+python scripts/extract_trace_rows.py \
+    --events traces/ladder/full_gpt55/events.jsonl \
+    --key "panel=active|method=llm_raw|level=3|seed=362855691|model=gpt-5.5" \
+    --out traces/aggregated/trace_1.csv
+\end{verbatim}
+Each \texttt{llm\_model\_call} event in the source file additionally carries the model's \texttt{parsed\_action.reasoning\_summary} and the full prompt/response, which are not rendered above but are available for any reviewer who wants to read the agent's prose for a given step.

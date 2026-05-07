@@ -1,0 +1,8 @@
+step,action,args,obs_summary
+1,intervene,"var=1, val=3.0",25 samples; budget left 5
+2,intervene,"var=6, val=10.0",25 samples; budget left 4
+3,intervene,"var=0, val=3.0",25 samples; budget left 3
+4,intervene,"var=2, val=2.5",25 samples; budget left 2
+5,intervene,"var=3, val=3.0",25 samples; budget left 1
+6,intervene,"var=5, val=2.0",25 samples; budget left 0
+7,submit_graph,"|E_d|=8, |E_u|=0","dir_f1=0.636, SHD=7"

@@ -98,15 +98,15 @@ The v1 ladder shifts levels away from the high-density v0 region and toward lowe
 Observational panel:
 
 - `pc`: PC algorithm, observational only.
-- `llm_raw_obs`: raw observational rows, no statistical tools, no interventions.
-- `llm_stats_obs`: observational rows plus statistical tools.
 
 Active panel:
 
 - `pc_greedy`: PC CPDAG followed by budgeted greedy interventions.
 - `llm_raw`: raw observational rows plus intervention actions.
 - `llm_stats`: raw rows, statistical tools, and intervention actions.
-- `oracle`: true DAG ceiling.
+- `pc_cpdag_llm`: PC builds observational graph, LLM uses interventions to orient.
+- `llm_stats_cpdag_greedy`: LLM builds observational graph, greedy orients with interventions.
+- `oracle`: true DAG ceiling (deprecated).
 
 The LLM layer uses LiteLLM through `LiteLLMJSONPolicyModel`, with provider routing for OpenAI, Anthropic, and OpenRouter model strings.
 
@@ -149,8 +149,6 @@ Rows are deduplicated by `(level, seed, panel, method, model)` and successful ro
 | Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
-| observational | `llm_raw_obs` | 48 | 65.7 | 74.1 | 19.2 | 22.6 | 9.396 | 100.0 |
-| observational | `llm_stats_obs` | 48 | 35.9 | 68.4 | 9.2 | 13.3 | 6.750 | 100.0 |
 | active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
 | active | `llm_raw` | 48 | 58.8 | 36.3 | 19.3 | 22.9 | 9.271 | 92.7 |
 | active | `llm_stats` | 48 | 40.0 | 48.0 | 13.3 | 18.8 | 6.583 | 100.0 |
@@ -161,8 +159,6 @@ Rows are deduplicated by `(level, seed, panel, method, model)` and successful ro
 | Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | observational | `pc` | 48 | 62.1 | 82.6 | 10.0 | 13.6 | 6.250 | 100.0 |
-| observational | `llm_raw_obs` | 48 | 57.7 | 38.9 | 34.5 | 36.1 | 7.458 | 100.0 |
-| observational | `llm_stats_obs` | 48 | 60.7 | 76.9 | 12.5 | 15.0 | 9.917 | 100.0 |
 | active | `pc_greedy` | 48 | 62.1 | 66.9 | 32.8 | 42.7 | 4.792 | 89.6 |
 | active | `llm_raw` | 48 | 56.3 | 35.0 | 29.6 | 31.7 | 7.250 | 97.9 |
 | active | `llm_stats` | 47 | 62.7 | 46.0 | 22.7 | 28.0 | 8.064 | 100.0 |
@@ -195,8 +191,6 @@ Run status:
 | Panel | Method | n | Skel F1 % | Dir P % | Dir R % | Dir F1 % | SHD | Eff % |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
 | observational | `pc` | 3 | 97.0 | 100.0 | 22.2 | 26.7 | 2.667 | 100.0 |
-| observational | `llm_raw_obs` | 3 | 63.5 | 100.0 | 0.0 | 0.0 | 9.000 | 100.0 |
-| observational | `llm_stats_obs` | 2 | 61.9 | 66.7 | 16.7 | 16.7 | 9.000 | 100.0 |
 | active | `pc_greedy` | 3 | 97.0 | 100.0 | 94.4 | 97.0 | 0.333 | 66.7 |
 | active | `llm_raw` | 2 | 61.9 | 25.0 | 50.0 | 33.3 | 4.000 | 50.0 |
 | active | `llm_stats` | 1 | 66.7 | 66.7 | 66.7 | 66.7 | 2.000 | 100.0 |
